@@ -1,0 +1,26 @@
+---
+title: "wing_size_data"
+author: "Sherzod Tokamov"
+date: "7/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## HW 04: Measuring the effects of ectopic expression of a tumor suppressor protein Kibra on *Drosophila* wing size.
+
+My research focuses on how organ growth is regulated at the molecular level. A key signaling pathway that regulates organ growth in animals is called the Hippo tumor suppressor pathway (Hippo pathway). The function of the Hippo pathway in development is to suppress growth when organs reach their optimal size. So, hyperactivation of the Hippo pathway leads to disproportionately small organs, and inactivation of the pathway leads to disproportionally large organs.
+
+In this excersize, I will investigate the effect of ectopic expression of one of the Hippo pathway components, Kibra, on the fly wing growth. I generated a gain-of-function mutant of Kibra, which should lead to enhanced growth-suppression.
+
+In this exercise control = no ectopic Kibra (only endogenous Kibra is expressed), KibWT = wild-type Kibra is expressed ectopically, and KibS677A = gain-of-function mutant Kibra is ectopically expressed. For a sample image of a *Drosophila* wing and the measurement annotations, please see images below. ![picture](wing/wing.001.png).
+
+```{r}
+library(dplyr)
+library(magrittr)
+wings_data <- read.csv("wing_size.csv", header = TRUE, stringsAsFactors = FALSE)
+#wings_data %>%
+  #area <- select(Control_area, KibWT_area, KibS677A_area)
+```
