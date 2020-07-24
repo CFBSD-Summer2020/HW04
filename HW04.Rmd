@@ -18,8 +18,11 @@ output: github_document
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
+library(knitr)
+theme_set(theme_bw())
 
 # read in the data
+guns <-read.csv("gun_deaths.csv")
 
 ```
 
@@ -30,6 +33,18 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 ```{r month, warning=FALSE}
 
+#Create the data frame for gun deaths per month
+deaths_month <- guns %>%
+    group_by(month) %>%
+    count(month) %>%
+    rename(Deaths_per_month = n)
+
+#Turns out R has a predefined object called month.abb that contains the abbreviated month names. This way is easy to change the numbers in the data frame for the actual month name. You only have to change the column type to a leveled factor and voila!
+deaths_month$month <- factor(month.abb[deaths_month$month], levels = month.abb, ordered = TRUE)
+
+
+kable(deaths_month, format = "markdown", col.names = c("Month", "Deaths per month"))
+
 ```
 
 
@@ -37,11 +52,35 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 ```{r month_chart}
 
+#Since deaths_month$month was already a leveled fector with abbreviated month names (line 43), you only need to graph.
+#The instruction was for the total number of deaths per month, not per year, but the data frame contains observations from 2012 to 2014.
+
+deaths_month %>%
+    ggplot(aes(x = month, y = Deaths_per_month)) + 
+    geom_col(fill = "blue") + #Filled just to pop some color there, I don't like grey
+        labs(title = "Number of gun deaths per month from 2012-2014",
+         x = "Month",
+         y = "Deaths per month")
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
+
+deaths_intent <- guns %>%
+    group_by(intent) %>%
+    count(intent, sort = TRUE) %>%
+    rename(no_of_deaths = n)
+
+
+kable(deaths_intent, format = "markdown")
+
+
+
+
+ggplot(deaths_intent, aes(x = intent, y = no_of_deaths)) +
+    geom_col()
+
 
 ```
 
