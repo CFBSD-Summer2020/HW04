@@ -71,14 +71,15 @@ deaths_month %>%
 
 deaths_intent <- guns %>%
     group_by(intent) %>%
-    count(intent, sort = TRUE) %>%
+    count(intent, sort = TRUE) %>% #Sorted values from highest to lowest
     rename(no_of_deaths = n)
 
 
 kable(deaths_intent, format = "markdown", col.names = c("Intent", "No. of deaths"))
 
+#Just to order the intent from highest to lowest
 deaths_intent$intent_ordered <- deaths_intent$intent
-deaths_intent$intent <- factor(deaths_intent$intent, levels = deaths_intent$intent_ordered, ordered = T)
+deaths_intent$intent <- factor(deaths_intent$intent, levels = deaths_intent$intent_ordered, ordered = TRUE)
 
 
 ggplot(deaths_intent, aes(x = intent, y = no_of_deaths)) +
@@ -94,6 +95,30 @@ ggplot(deaths_intent, aes(x = intent, y = no_of_deaths)) +
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
+
+#This way we can clean our data from Not Available age values
+death_sex_age <- guns %>%
+    select(sex, age) %>%
+    filter(age != "Not Available")
+
+#We need to change the column type from "character" to "double" to create the boxplot
+death_sex_age$age <- as.numeric(death_sex_age$age)
+
+death_sex_age %>%
+    ggplot(aes(x = sex, y = age)) +
+    geom_boxplot(fill = c("green", "orange"), alpha = 0.5) +
+    labs(title = "Age distibution of gun death victims by sex",
+         x = "Sex",
+         y = "Age",
+         caption = "Source: fivethirtyeight.com")
+
+#We only need data from females, so we can filter it
+avg_fem_deaths <- death_sex_age %>%
+    filter(sex == "F") 
+
+print(paste("The average age of female gun death victims is", round(mean(avg_fem_deaths$age)), "years"))
+
+
 
 ```
 
