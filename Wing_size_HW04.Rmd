@@ -20,7 +20,21 @@ In this exercise control = no ectopic Kibra (only endogenous Kibra is expressed)
 ```{r}
 library(dplyr)
 library(magrittr)
-wings_data <- read.csv("wing_size.csv", header = TRUE, stringsAsFactors = FALSE)
-#wings_data %>%
-  #area <- select(Control_area, KibWT_area, KibS677A_area)
+library(ggplot2)
+wings_data <- read.csv("wing_dimensions.csv", header = TRUE, stringsAsFactors = FALSE) #read in the data
+size_compare <- wings_data %>%
+  select(genotype, area, length, width) #select specifically the area columns for each genotype
+size_compare %>%
+  group_by(genotype) %>%
+  summarize(avg_size = mean(area)) %>%
+  arrange(desc(avg_size))
+
+ggplot(wings_data, aes(x = reorder(genotype, -area), area, fill = genotype)) +
+  geom_boxplot() +
+  labs(x = "Genotype", y = "Wing Area (AU)", title = "Effect of ectopic Kibra expression on fly wing size")
+
 ```
+
+As predicted from a growth suppressing protein, ectopic expression of Kibra leads to smaller wing size. Note that expression of the gain-of-function mutant version ofKibra (KibS677A) leads to a very dramatic undergrowth.
+
+
