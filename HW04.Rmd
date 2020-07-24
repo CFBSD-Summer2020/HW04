@@ -1,5 +1,6 @@
 ---
 title: "Exploring Gun Deaths in America"
+author: "Ricardo Muñiz Trejo"
 output: github_document
 ---
 
@@ -60,7 +61,8 @@ deaths_month %>%
     geom_col(fill = "blue") + #Filled just to pop some color there, I don't like grey
         labs(title = "Number of gun deaths per month from 2012-2014",
          x = "Month",
-         y = "Deaths per month")
+         y = "Deaths per month",
+         caption = "Source: fivethirtyeight.com")
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
@@ -73,13 +75,18 @@ deaths_intent <- guns %>%
     rename(no_of_deaths = n)
 
 
-kable(deaths_intent, format = "markdown")
+kable(deaths_intent, format = "markdown", col.names = c("Intent", "No. of deaths"))
 
-
+deaths_intent$intent_ordered <- deaths_intent$intent
+deaths_intent$intent <- factor(deaths_intent$intent, levels = deaths_intent$intent_ordered, ordered = T)
 
 
 ggplot(deaths_intent, aes(x = intent, y = no_of_deaths)) +
-    geom_col()
+    geom_col(fill = "red") +
+    labs(title = "Number of gun deaths associated with each type of \nintent cause of death from 2012-2014",
+         x = "Intent cause of death",
+         y = "Number of deaths",
+         caption = "Source: fivethirtyeight.com")
 
 
 ```
