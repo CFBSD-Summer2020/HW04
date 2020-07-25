@@ -20,6 +20,7 @@ The gun_deaths.csv is provided in the repository.
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
 library(knitr)
+library(ggsignif) #This package adds significance bars to plots, useful for the last exercise
 theme_set(theme_bw())
 
 # read in the data
@@ -63,7 +64,7 @@ deaths_month %>%
     geom_col(fill = "blue") + #Filled just to pop some color there, I don't like grey
         labs(title = "Number of gun deaths per month from 2012-2014",
          x = "Month",
-         y = "Deaths per month",
+         y = "Number of gun deaths",
          caption = "Source: fivethirtyeight.com")
 ```
 
@@ -85,10 +86,10 @@ deaths_intent$intent <- factor(deaths_intent$intent, levels = deaths_intent$inte
 
 
 ggplot(deaths_intent, aes(x = intent, y = no_of_deaths)) +
-    geom_col(fill = "red") +
+    geom_col(fill = "red") + 
     labs(title = "Number of gun deaths associated with each type of \nintent cause of death from 2012-2014",
          x = "Intent cause of death",
-         y = "Number of deaths",
+         y = "Number of gun deaths",
          caption = "Source: fivethirtyeight.com")
 
 
@@ -103,8 +104,8 @@ death_sex_age <- guns %>%
     select(sex, age) %>%
     filter(age != "Not Available")
 
-#We need to change the column type from "character" to "double" to create the boxplot
-death_sex_age$age <- as.numeric(death_sex_age$age)
+#We need to change the column type from "character" to "integer" to create the boxplot
+death_sex_age$age <- as.integer(death_sex_age$age)
 
 death_sex_age %>%
     ggplot(aes(x = sex, y = age, fill = sex), alpha = 0.5) +
@@ -171,24 +172,39 @@ print(paste("The season with most gun deaths is", most_death_season$season, "wit
 
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
+**Answer**
+Looking at the gross numbers, some general trends start to arise. It is clear by the data that white people gun deaths are more related to suicide than homicide. On the other hand, black people gun deaths are the opposite, with more deaths related to homicide than suicide. Meanwhile, hispanic population seems about the same.
+
 ```{r race, echo=F}
 
 deaths_race <- guns %>%
     group_by(race, intent) %>%
-    filter(intent %in% c("Homicide", "Suicide"), race %in% c("White", "Hispanic", "Black")) %>%
+    filter(intent %in% c("Homicide", "Suicide"), 
+           race %in% c("White", "Hispanic", "Black")) %>%
     count(race) %>%
     rename(deaths = n) %>%
-    ungroup()
+    ungroup() #It is important to ungroup to perform further analysis
 
+#A simple graph comparing the total number of gun deaths per race and intent.
 deaths_race %>%
     ggplot(aes(x = race, y = deaths, fill = intent)) +
-    geom_col(position = "dodge")
+    geom_col(position = "dodge") +
+    labs(title = "Total number of gun deaths per race and intent from 2012-2014",
+         x = "Race",
+         y = "Number of gun deaths",
+         caption = "Source: fivethirtyeight.com")
 
 ```
+
+**Answer (continuation)**
+When analyzing percentages per race, it is worth noting that the percentage of black people killed by homicide is around the same as white people that committed suicide (85%). This means that white people is as likely to die from suicide than black people is to die from homicide. For the hispanic population, the likeliness of dying because of homicide is 20% lower than black people, but it remains as the most likely cause of gun death.
+
 
 (hint maybe looking at percentages would be good)
 ```{r race_2, echo=F}
 
+#If there's better way of doing the following I don't know how.
+#I decomposed the deaths_race data frame into races to calculate the percentages of gun deaths by intent individually.
 black_percent <- deaths_race %>%
     filter(race == "Black") %>%
     mutate(percentage = round(deaths / sum(deaths)* 100, digits = 2))
@@ -201,12 +217,19 @@ white_percent <- deaths_race %>%
     filter(race == "White") %>%
     mutate(percentage = round(deaths / sum(deaths)* 100, digits = 2))
 
+#Then I merged the data frames per race to gain a new data frame that can be used to make a graph
 deaths_race_percentage <- rbind(black_percent, hispanic_percent, white_percent)
 
+#I initially did this as pie charts, since the percentages allow it, but I kinda like this visualization better, it's much more comparable in my opinion. 
 deaths_race_percentage %>%
     ggplot(aes(x = race, y = percentage, fill = intent)) +
-    geom_col()
-    
+    geom_col() +
+    labs(title = "Percentage of gun deaths per race and intent from 2012-2014",
+         x = "Race",
+         y = "Percentage (%)",
+         caption = "Source: fivethirtyeight.com") 
+
+#Finally, a table with the exact data never does harm
 kable(deaths_race_percentage, format = "markdown", col.names = c("Race", "Intent", "Total deaths", "Percentage per race"))
 
 ```
@@ -215,6 +238,42 @@ kable(deaths_race_percentage, format = "markdown", col.names = c("Race", "Intent
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police}
+deaths_police_age <- guns %>%
+    select(police, age) %>%
+    filter(age != "Not Available")
+
+
+deaths_police_age$age <- as.integer(deaths_police_age$age)
+deaths_police_age$police <- factor(deaths_police_age$police, levels = c(0, 1), ordered = TRUE)
+
+
+deaths_police_age %>%
+    ggplot(aes(x = police, y = age, fill = police)) +
+    geom_violin(alpha = 0.5) +
+    geom_boxplot(width = 0.05)
+
+deaths_police_race <- guns %>%
+    select(police, race) %>%
+    group_by(police) %>%
+    count(race)
+
+deaths_police_race$police <- factor(deaths_police_race$police, levels = c(0, 1), ordered = TRUE)
+
+deaths_police_race %>%
+    ggplot(aes(x = race, y = n, fill = police)) +
+    geom_col(position = "dodge") +
+    scale_y_log10()
+
+
+
+#involvement <- c("Not involved", "Involved")
+#deaths_police$police <- factor(deaths_police$police, levels = c(0, 1), ordered = TRUE)
+
+#deaths_police %>%
+#    ggplot(aes(x = police, y = age, fill = police)) +
+#    geom_violin(alpha = 0.5) +
+#    geom_boxplot(width = 0.05)
+
 
 ```
 
@@ -222,7 +281,10 @@ Think about performing stats such as a t.test to see if differences you are plot
 
 ```{r stats?}
 
+test_pol_age <- t.test(deaths_police_age$age[deaths_police_age$police == 0],
+                       deaths_police_age$age[deaths_police_age$police == 1])
 
+test_pol_age
 ```
 
 
