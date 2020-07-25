@@ -70,18 +70,40 @@ We can also graph the data by plotting the region in the x-axis and faceting by 
 ```{r}
 aspect_ratios %>%
   select(genotype, 6:8) %>%
-  gather(key = "Region", value = "Ratio", 2:4) %>%  #rearranges data into long format
-  ggplot(mapping = aes(x = Region, Ratio, fill = Region)) +
+  gather(key = "Region", value = "Aspect_ratio", 2:4) %>%  #rearranges data into long format
+  ggplot(mapping = aes(x = Region, Aspect_ratio, fill = Region)) +
   geom_boxplot() +
   labs(x = "Wing Region", y = "Aspect Ratio by Wing Region", title = "KibraS677A mutant suppresses growth stronger in the proximal wing region") +
   facet_wrap(~as_factor(genotype))
 ```
 
 
+The graphs above show that the width of the wings is non-uniformly decreased in the proximal region of the wing when KibS677A is expressed. What about the length of the wing? We can use the posterior crossvein (pcv, see image above) as an approximating border between proximal length (from wing hinge to pcv) and distal length (from pcv to wing tip).
+
+```{r}
+L4_dimensions <- wings_data %>%
+  select(genotype, L4_length, hinge_pcv, pcv_tip) %>%
+  mutate(proximal_L4 = hinge_pcv/L4_length, distal_L4 = pcv_tip/L4_length)
+
+L4_dimensions %>%
+  select(genotype, 5:6) %>%
+  gather(key = "L4_region", value = "L4_length_ratio", 2:3) %>%
+  ggplot(mapping = aes(x = as_factor(genotype), y = L4_length_ratio, fill = L4_region, ylim = 0.85)) +
+  geom_boxplot() +
+  annotate("text", x=2.7, y = 0.46, label = "p < 0.001") +
+  annotate("rect", xmin = 2.25, xmax=3.2, ymin=0.449, ymax = 0.45, alpha=1, fill = "black") +
+  annotate("text", x=1.7, y = 0.46, label = "p>0.05 (not significant)") +
+  annotate("rect", xmin = 1.2, xmax=2.15, ymin=0.449, ymax = 0.45, alpha=1, fill = "black") +
+  annotate("text", x=1.3, y = 0.61, label = "p>0.05 (not significant)") +
+  annotate("rect", xmin = 0.8, xmax=1.8, ymin=0.5985, ymax = 0.6, alpha=1, fill = "black")+
+  annotate("text", x=2.3, y = 0.63, label = "p < 0.001") +
+  annotate("rect", xmin = 1.8, xmax=2.8, ymin=0.619, ymax = 0.62, alpha=1, fill = "black") +
+  expand_limits(y = 0.65) +
+  labs(x = "Genotype", y = "Proportion of total L4 length", title = "Change in proximal and distal length of L4 vein with respect to total vein length")
+```
 
 
-
-
+We can see from the graph above that when KibS677A is expressed, the distal portion of L4 vein becomes longer while the proximal portion of L4 vein becomes shorter with respect to the total length of L4 vein. Together with aspect ratios resutls we saw above, this suggests that KibS677A suppresses tissue growth disproportionally in the proximal region of the wing.
 
 
 
