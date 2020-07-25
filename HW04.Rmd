@@ -96,7 +96,7 @@ ggplot(deaths_intent, aes(x = intent, y = no_of_deaths)) +
 
 ```{r age_&_sex}
 
-#This way we can clean our data from Not Available age values
+#This way we can clean our data from Not Available age values, and even though is not necessary, I prefer to work with a smaller data set hence the select() function
 death_sex_age <- guns %>%
     select(sex, age) %>%
     filter(age != "Not Available")
@@ -127,6 +127,14 @@ print(paste("The average age of female gun death victims is", round(mean(avg_fem
 
 ```{r education}
 
+deaths_WM_HS_2012 <- guns %>%
+    select(year, sex, race, education) %>%
+    filter(year == 2012, race == "White", education != "Less than HS") %>%
+    count(sex = "M")
+
+print(paste(deaths_WM_HS_2012$n, "white males with at least high school education were killed by guns in 2012"))
+
+    
 ```
 
 
@@ -140,6 +148,19 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
+
+#We need to add a new column to the deaths_month vector (line 38) with the corresponding season
+deaths_month$season[deaths_month$month %in% c("Jan", "Feb", "Mar")] <- "Winter"
+deaths_month$season[deaths_month$month %in% c("Apr", "May", "Jun")] <- "Spring"
+deaths_month$season[deaths_month$month %in% c("Jul", "Aug", "Sep")] <- "Summer"
+deaths_month$season[deaths_month$month %in% c("Oct", "Nov", "Dec")] <- "Fall"
+
+most_death_season <- deaths_month %>%
+    group_by(season) %>%
+    summarize(total_deaths = sum(Deaths_per_month)) %>%
+    top_n(1, season)
+
+print(paste("The season with most gun deaths is", most_death_season$season, "with", most_death_season$total_deaths, "deaths in total from 2012-2014"))
 
 ```
 
