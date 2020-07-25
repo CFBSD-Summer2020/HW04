@@ -87,9 +87,11 @@ deaths_intent$intent <- factor(deaths_intent$intent, levels = deaths_intent$inte
 
 ggplot(deaths_intent, aes(x = intent, y = no_of_deaths)) +
     geom_col(fill = "red") + 
+    scale_y_log10() +
+    annotation_logticks(sides = "l") +
     labs(title = "Number of gun deaths associated with each type of \nintent cause of death from 2012-2014",
          x = "Intent cause of death",
-         y = "Number of gun deaths",
+         y = "Number of gun deaths (log scale)",
          caption = "Source: fivethirtyeight.com")
 
 
@@ -237,69 +239,124 @@ kable(deaths_race_percentage, format = "markdown", col.names = c("Race", "Intent
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
-```{r police}
-deaths_police_age <- guns %>%
-    select(police, age) %>%
-    filter(age != "Not Available")
+```{r police, echo=F}
+deaths_police <- guns %>%
+    select(intent, police, age, race) %>%
+    filter(age != "Not Available", intent == "Homicide")
 
 
-deaths_police_age$age <- as.integer(deaths_police_age$age)
-deaths_police_age$police <- factor(deaths_police_age$police, levels = c(0, 1), ordered = TRUE)
+deaths_police$age <- as.integer(deaths_police$age)
+
+#To a more understandable variables
+deaths_police$police <- factor(deaths_police$police)
+levels(deaths_police$police)[levels(deaths_police$police) == 0] <-"Not involved"
+levels(deaths_police$police)[levels(deaths_police$police) == 1] <-"Involved"
+
+#Names are too large for my taste
+deaths_police$race <- factor(deaths_police$race)
+levels(deaths_police$race)[levels(deaths_police$race) == "Asian/Pacific Islander"] <-"AP"
+levels(deaths_police$race)[levels(deaths_police$race) == "Black"] <-"BL"
+levels(deaths_police$race)[levels(deaths_police$race) == "Hispanic"] <-"His"
+levels(deaths_police$race)[levels(deaths_police$race) == "Not Availabletive American/Not Availabletive Alaskan"] <-"NNA"
+levels(deaths_police$race)[levels(deaths_police$race) == "White"] <-"WH"
 
 
-deaths_police_age %>%
-    ggplot(aes(x = police, y = age, fill = police)) +
-    geom_violin(alpha = 0.5) +
-    geom_boxplot(width = 0.05)
-
-deaths_police_race <- guns %>%
+dp_race <- deaths_police %>%
     select(police, race) %>%
     group_by(police) %>%
-    count(race)
+    count(race) %>%
+    arrange(race)
 
-deaths_police_race$police <- factor(deaths_police_race$police, levels = c(0, 1), ordered = TRUE)
+dp_age <- deaths_police %>%
+    select(police, age)
 
-deaths_police_race %>%
+kable(dp_race, format = "markdown", col.names = c("Police involvement", "Race", "Number of deaths"))
+
+dp_race %>%
     ggplot(aes(x = race, y = n, fill = police)) +
     geom_col(position = "dodge") +
-    scale_y_log10()
-
-
-
-#involvement <- c("Not involved", "Involved")
-#deaths_police$police <- factor(deaths_police$police, levels = c(0, 1), ordered = TRUE)
-
-#deaths_police %>%
-#    ggplot(aes(x = police, y = age, fill = police)) +
-#    geom_violin(alpha = 0.5) +
-#    geom_boxplot(width = 0.05)
-
+    scale_y_log10() +
+    annotation_logticks(sides = "l") +
+    labs(title = "Police involvement in gun deaths according to race",
+         x = "Race",
+         y = "Number of deaths (log 10)",
+         fill = "Police involvement",
+         caption = "Source: fivethirtyeight.com")  
 
 ```
+
+**Answer**
+About police involvement and race, it seems that police officers as not as involved with the total number of deaths per race. In general, numbers are at least a order of magnitude less when police is involved, that's why a log 10 scale was necessary to observe all values clearly inside the graph. And also why I included the table.
 
 Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
 
 ```{r stats?}
 
-test_pol_age <- t.test(deaths_police_age$age[deaths_police_age$police == 0],
-                       deaths_police_age$age[deaths_police_age$police == 1])
+ks.test(dp_age$age[dp_age$police == "Not involved"],
+       dp_age$age[dp_age$police == "Involved"])
 
-test_pol_age
-```
+wilcox.test(dp_age$age[dp_age$police == "Not involved"],
+                       dp_age$age[dp_age$police == "Involved"])
 
-
-```{r police_2}
 
 ```
+
+
+```{r police_2, echo=F}
+
+dp_age %>%
+    ggplot(aes(x = police, y = age, fill = police)) +
+    geom_violin(alpha = 0.5) +
+    geom_boxplot(width = 0.1) +
+    geom_signif(comparisons = list(c("Not involved", "Involved")), map_signif_level = TRUE, test = wilcox.test) +
+    scale_y_continuous(breaks = seq(0, 120, 20)) +
+    labs(title = "Police involvement in gun deaths according to victim's age",
+         x = "Police involvement",
+         y = "Victim's age",
+         fill = "Police involvement",
+         caption = "Source: fivethirtyeight.com") 
+
+```
+
+**Answer**
+The distribution of victim's age is not exactly normal, see the Kolmogorov-Smirnov test results (p < 0.001), also noticeable in the violin plot, so the Mann-Whitman-Wilcoxon test is a better option to assess statistical differences between groups. Although I didn't test for heterocedasticity. Police involvent in significantly different when comparing age victims
 
 ```{r stats_2?}
 
+wilcox.test(deaths_police$age[deaths_police$police == "Not involved" & deaths_police$race == "AP"],
+       deaths_police$age[deaths_police$police == "Involved" & deaths_police$race == "AP"])
+
+wilcox.test(deaths_police$age[deaths_police$police == "Not involved" & deaths_police$race == "BL"],
+       deaths_police$age[deaths_police$police == "Involved" & deaths_police$race == "BL"])
+
+wilcox.test(deaths_police$age[deaths_police$police == "Not involved" & deaths_police$race == "His"],
+       deaths_police$age[deaths_police$police == "Involved" & deaths_police$race == "His"])
+
+wilcox.test(deaths_police$age[deaths_police$police == "Not involved" & deaths_police$race == "NNA"],
+       deaths_police$age[deaths_police$police == "Involved" & deaths_police$race == "NNA"])
+
+wilcox.test(deaths_police$age[deaths_police$police == "Not involved" & deaths_police$race == "WH"],
+       deaths_police$age[deaths_police$police == "Involved" & deaths_police$race == "WH"])
 
 ```
 
 
 Finally, all together now:
-```{r police_3}
+```{r police_3, echo =F}
+
+deaths_police %>%
+    ggplot(aes(x = race, y = age, fill = police)) +
+    geom_boxplot(alpha = 0.5, outlier.shape = NA) +
+    geom_signif(y_position = c(82, 67, 67, 67, 92), xmin = c(0.75, 1.75, 2.75, 3.75, 4.75), 
+                xmax = c(1.25,2.25,3.25, 4.25, 5.25), annotation = c("NS", "***", "***", "NS", "NS"), 
+                tip_length = 0.01) +
+    scale_y_continuous(breaks = seq(0, 120, 20)) +
+    labs(title = "Police involvement in gun deaths according to victim's age and race",
+         x = "Race",
+         y = "Victim's age",
+         fill = "Police involvement",
+         caption = "Source: fivethirtyeight.com") 
+
 
 ```
 
