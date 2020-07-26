@@ -43,7 +43,7 @@ deaths_month <- guns %>%
     count(month) %>%
     rename(Deaths_per_month = n)
 
-#Turns out R has a predefined object called month.abb that contains the abbreviated month names. This way is easy to change the numbers in the data frame for the actual month name. You only have to change the column type to a leveled factor and voila!
+#Turns out R has a predefined object called month.abb that contains the abbreviated month names, much like month.name. This makes very easy to change the numbers in the data frame for the actual month names. You only have to change the column type to a factor and voilà!
 deaths_month$month <- factor(month.abb[deaths_month$month], levels = month.abb, ordered = TRUE)
 
 
@@ -56,13 +56,13 @@ kable(deaths_month, format = "markdown", col.names = c("Month", "Deaths per mont
 
 ```{r month_chart, echo=F}
 
-#Since deaths_month$month was already a leveled fector with abbreviated month names (line 43), you only need to graph.
+#Since deaths_month$month was already a factor with abbreviated month names (line 47), you only need to graph.
 #The instruction was for the total number of deaths per month, not per year, but the data frame contains observations from 2012 to 2014.
 
 deaths_month %>%
     ggplot(aes(x = month, y = Deaths_per_month)) + 
-    geom_col(fill = "blue") + #Filled just to pop some color there, I don't like grey
-        labs(title = "Number of gun deaths per month from 2012-2014",
+    geom_col(fill = "blue") + #Filled just to pop some color there, I don't like gray.
+        labs(title = "Number of gun deaths per month from 2012-2014", #The instruction was for the total number of deaths per month, not per year, but the data frame contains observations from 2012 to 2014.
          x = "Month",
          y = "Number of gun deaths",
          caption = "Source: fivethirtyeight.com")
@@ -80,14 +80,14 @@ deaths_intent <- guns %>%
 
 kable(deaths_intent, format = "markdown", col.names = c("Intent", "No. of deaths"))
 
-#Just to order the intent from highest to lowest
+#Just to order the intent from highest to lowest in a factor
 deaths_intent$intent_ordered <- deaths_intent$intent
 deaths_intent$intent <- factor(deaths_intent$intent, levels = deaths_intent$intent_ordered, ordered = TRUE)
 
 
 ggplot(deaths_intent, aes(x = intent, y = no_of_deaths)) +
     geom_col(fill = "red") + 
-    scale_y_log10() +
+    scale_y_log10() + #Accidental, Undetermined, and NA went almost unnoticed in a regular scale.
     annotation_logticks(sides = "l") +
     labs(title = "Number of gun deaths associated with each type of \nintent cause of death from 2012-2014",
          x = "Intent cause of death",
@@ -101,7 +101,7 @@ ggplot(deaths_intent, aes(x = intent, y = no_of_deaths)) +
 
 ```{r age_&_sex, echo=F}
 
-#This way we can clean our data from Not Available age values, and even though is not necessary, I prefer to work with a smaller data set hence the select() function
+#This way we can clean our data from Not Available age values (strings). Also is not strictly necessary, but I wanted to try the select() function.
 death_sex_age <- guns %>%
     select(sex, age) %>%
     filter(age != "Not Available")
@@ -117,11 +117,12 @@ death_sex_age %>%
          y = "Age",
          caption = "Source: fivethirtyeight.com")
 
-#We only need data from females, so we can filter it
+#We only need data from females, so we can filter and summarize it
 avg_fem_deaths <- death_sex_age %>%
-    filter(sex == "F") 
+    filter(sex == "F") %>%
+    summarize(mean_value = round(mean(age)))
 
-print(paste("The average age of female gun death victims is", round(mean(avg_fem_deaths$age)), "years"))
+print(paste("The average age of female gun death victims was", avg_fem_deaths, "years"))
 
 
 
@@ -165,7 +166,7 @@ most_death_season <- deaths_month %>%
     summarize(total_deaths = sum(Deaths_per_month)) %>%
     top_n(1, total_deaths)
 
-print(paste("The season with most gun deaths is", most_death_season$season, "with", most_death_season$total_deaths, "deaths in total from 2012-2014"))
+print(paste("The season with most gun deaths was", most_death_season$season, "with", most_death_season$total_deaths, "deaths in total from 2012-2014"))
 
 ```
 
@@ -175,7 +176,7 @@ print(paste("The season with most gun deaths is", most_death_season$season, "wit
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 **Answer**
-Looking at the gross numbers, some general trends start to arise. It is clear by the data that white people gun deaths are more related to suicide than homicide. On the other hand, black people gun deaths are the opposite, with more deaths related to homicide than suicide. Meanwhile, hispanic population seems about the same.
+Looking at the gross numbers, some general trends start to arise. It is clear by the data that white people gun deaths are more related to suicide than homicide. On the other hand, black people gun deaths are the opposite, with more deaths related to homicide than suicide. Meanwhile, hispanic population seems about the same in proportion.
 
 ```{r race, echo=F}
 
@@ -205,8 +206,7 @@ When analyzing percentages per race, it is worth noting that the percentage of b
 (hint maybe looking at percentages would be good)
 ```{r race_2, echo=F}
 
-#If there's better way of doing the following I don't know how.
-#I decomposed the deaths_race data frame into races to calculate the percentages of gun deaths by intent individually.
+#If there's better way of doing the following I don't know how, but I decomposed the deaths_race data frame into races to calculate the percentages of gun deaths by intent individually.
 black_percent <- deaths_race %>%
     filter(race == "Black") %>%
     mutate(percentage = round(deaths / sum(deaths)* 100, digits = 2))
@@ -247,12 +247,12 @@ deaths_police <- guns %>%
 
 deaths_police$age <- as.integer(deaths_police$age)
 
-#To a more understandable variables
+#To more understandable variables.
 deaths_police$police <- factor(deaths_police$police)
 levels(deaths_police$police)[levels(deaths_police$police) == 0] <-"Not involved"
 levels(deaths_police$police)[levels(deaths_police$police) == 1] <-"Involved"
 
-#Names are too large for my taste
+#Names here can be too large, so I abbreviate them.
 deaths_police$race <- factor(deaths_police$race)
 levels(deaths_police$race)[levels(deaths_police$race) == "Asian/Pacific Islander"] <-"AP"
 levels(deaths_police$race)[levels(deaths_police$race) == "Black"] <-"BL"
@@ -260,13 +260,14 @@ levels(deaths_police$race)[levels(deaths_police$race) == "Hispanic"] <-"His"
 levels(deaths_police$race)[levels(deaths_police$race) == "Not Availabletive American/Not Availabletive Alaskan"] <-"NNA"
 levels(deaths_police$race)[levels(deaths_police$race) == "White"] <-"WH"
 
-
+#Police involvement vs. race.
 dp_race <- deaths_police %>%
     select(police, race) %>%
     group_by(police) %>%
     count(race) %>%
     arrange(race)
 
+#Police involvement vs. age.
 dp_age <- deaths_police %>%
     select(police, age)
 
@@ -283,18 +284,34 @@ dp_race %>%
          fill = "Police involvement",
          caption = "Source: fivethirtyeight.com")  
 
+dp_race_sum <- dp_race %>%
+    summarize(sum_v = sum(n), round(per_v = (sum_v * 100) / 35167), mean_v = mean(n))
+
+kable(dp_race_sum, format = "markdown", col.names = c("Police involvement", "Total gun deaths", "Percentage (%)", "Average deaths among all races"))
+
 ```
 
 **Answer**
-About police involvement and race, it seems that police officers as not as involved with the total number of deaths per race. In general, numbers are at least a order of magnitude less when police is involved, that's why a log 10 scale was necessary to observe all values clearly inside the graph. And also why I included the table.
+As seen before, suicide represents an important portion of the database and can bias the analysis of police involvement, so the data was filtered to only include homicide.
+
+About police involvement and race, it seems that police officers are involved in only 4% of homicides in the United States (see table). When evaluated by race, involvement is generally low too. If we consider the average deaths among all races, black and white populations are the most affected by police involvement, while hispanic population are right on the average value (see table). 
 
 Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
 
 ```{r stats?}
 
+#It's been a while since I had my statistics course, so if this analysis is wrong in any way, feel free to explain to me how to correct it. 
+
+
+#Kolmogorov-Smirnov test to check for normality in the data
 ks.test(dp_age$age[dp_age$police == "Not involved"],
        dp_age$age[dp_age$police == "Involved"])
 
+#Fligner-Killeen test to check for heteroscedasticity
+fligner.test(list(dp_age$age[dp_age$police == "Not involved"],
+       dp_age$age[dp_age$police == "Involved"]))
+
+#Mann-Whitman-Wilcoxon test to compare non-normal samples
 wilcox.test(dp_age$age[dp_age$police == "Not involved"],
                        dp_age$age[dp_age$police == "Involved"])
 
@@ -306,8 +323,7 @@ wilcox.test(dp_age$age[dp_age$police == "Not involved"],
 
 dp_age %>%
     ggplot(aes(x = police, y = age, fill = police)) +
-    geom_violin(alpha = 0.5) +
-    geom_boxplot(width = 0.1) +
+    geom_boxplot(alpha = 0.5) +
     geom_signif(comparisons = list(c("Not involved", "Involved")), map_signif_level = TRUE, test = wilcox.test) +
     scale_y_continuous(breaks = seq(0, 120, 20)) +
     labs(title = "Police involvement in gun deaths according to victim's age",
@@ -316,13 +332,19 @@ dp_age %>%
          fill = "Police involvement",
          caption = "Source: fivethirtyeight.com") 
 
+#A summary table.
+kable(dp_age %>%
+          group_by(police) %>%
+          summarize(median_v = median(age), min_v = min(age)), format = "markdown", col.names = c("Police involvement", "Median victim's age", "Youngest victim"))
+
 ```
 
 **Answer**
-The distribution of victim's age is not exactly normal, see the Kolmogorov-Smirnov test results (p < 0.001), also noticeable in the violin plot, so the Mann-Whitman-Wilcoxon test is a better option to assess statistical differences between groups. Although I didn't test for heterocedasticity. Police involvent in significantly different when comparing age victims
+The distribution of victim's age is not exactly normal (see the Kolmogorov-Smirnov test results, p < 0.001), but the data has homoscedasticity (see the Fligner-Killen test, p > 0.05), therefore, the Mann-Whitman-Wilcoxon test is a better option to assess statistical differences between samples than the t-test. According to the analysis, the victims' age is statistically higher when police is involved. Check the table for the median values. It is also noticeable than police officers didn't shoot anyone younger than 12.
 
 ```{r stats_2?}
 
+#Wilcoxon test for every race, age and police involvement.
 wilcox.test(deaths_police$age[deaths_police$police == "Not involved" & deaths_police$race == "AP"],
        deaths_police$age[deaths_police$police == "Involved" & deaths_police$race == "AP"])
 
@@ -342,6 +364,7 @@ wilcox.test(deaths_police$age[deaths_police$police == "Not involved" & deaths_po
 
 
 Finally, all together now:
+
 ```{r police_3, echo =F}
 
 deaths_police %>%
@@ -357,9 +380,12 @@ deaths_police %>%
          fill = "Police involvement",
          caption = "Source: fivethirtyeight.com") 
 
-
 ```
 
+**Answer**
+According to our analysis, there is no significant correlation of the age victims and police involvement in Asian/Pacific islander (AP), White (WH), and...uh...I guess native American/Alaskan? (NNA)\* populations. In contrast, Black and Hispanic people is statistically older when police is involved in their cause of death. 
+
+\* The original tag was "Not *Availabletive* American/Alaskan"...but I image that was a typo or something. 
 
 ## Session info
 
