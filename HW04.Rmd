@@ -18,9 +18,12 @@ output: github_document
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
+library(readr)
+library(knitr)
+library(usethis)
 
 # read in the data
-
+gun_deaths <- read_csv("gun_deaths.csv")
 ```
 
 ## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
@@ -29,34 +32,64 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 
 ```{r month, warning=FALSE}
-
+death_month <- gun_deaths %>% 
+  group_by(month) %>% 
+  summarise('Number of Gun Deaths' = n())
+kable(death_month)
 ```
 
 
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
+p1 <- ggplot(death_month, aes(x = month.abb[month], y = `Number of Gun Deaths`)) +
+  geom_bar(stat = "identity", color = "skyblue", fill = "skyblue") +
+  labs(title = 'Number of Gun Deaths per Month', x = "Month") +
+  theme(plot.title = element_text(hjust = 0.5))
 
+p1
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
+death_intent <- gun_deaths %>% 
+  group_by(intent) %>% 
+  summarise('Number of Gun Deaths' = n())
 
+p2 <- ggplot(death_intent, aes(x = reorder(intent, -`Number of Gun Deaths`), y = `Number of Gun Deaths`)) +
+  geom_bar(stat = 'identity', color = 'rosybrown', fill = 'rosybrown') +
+  labs(title = 'Number of Gun Deaths by Intent', x = "Month") +
+  theme(plot.title = element_text(hjust = 0.5))
+
+p2
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
+# Generate a boxplot visualizing the age of gun death victims, by sex
+gun_deaths$age <- as.numeric(gun_deaths$age)
 
+p3 <- ggplot(gun_deaths, aes(x = sex, y = age)) +
+  geom_boxplot()
+
+p3
+
+# Print the averae age of female gun death victims
+mean(gun_deaths %>% filter(sex == "F") %>% select(age) %>% unlist(), na.rm = TRUE)
 ```
 
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
-
+gun_deaths %>% 
+  filter(year == 2012, sex == "M", race == "White", education %in% c('HS/GED', 'BA+', 'Some college')) %>% 
+  summarise(n())
 ```
+
+`Answer:` 15199 white males with at least a high school education were killed by guns in 2012. 
 
 
 ## Which season of the year has the most gun deaths?
@@ -69,37 +102,91 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
+gun_season <- gun_deaths %>% 
+  mutate(season = ifelse(month %in% 1:3, "Winter",
+                               ifelse(month %in% 4:6, "Spring",
+                                      ifelse(month %in% 7:9, "Summer",
+                                             "Fall")))) %>% 
+  group_by(season) %>% 
+  summarise('Number of Gun Deaths' = n()) %>% 
+  arrange(desc(`Number of Gun Deaths`))
 
+gun_season
 ```
 
+`Answer:` Summer has the most gun deaths
 
 # These are more open ended questions from here on out, you could look at making multiple summaries or types of plots. 
 
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 ```{r race}
+gun_white <- gun_deaths %>%
+  filter(race == 'White') %>% 
+  group_by(intent) %>% 
+  summarise('Number of Gun Deaths' = n()) %>% 
+  mutate("Frequency (%)" = `Number of Gun Deaths` / sum(`Number of Gun Deaths`) * 100)
 
+kable(gun_white)
 ```
+
+`Answer:` Whites who are killed by guns are more likely to die because of suicide. 
 
 (hint maybe looking at percentages would be good)
 ```{r race_2}
+gun_race <- gun_deaths %>%
+  filter(race %in% c('White', 'Black', 'Hispanic')) %>% 
+  group_by(race, intent) %>% 
+  summarise('Number of Gun Deaths' = n()) %>% 
+  mutate("Percentage (%)" = `Number of Gun Deaths` / sum(`Number of Gun Deaths`) * 100)
 
+kable(gun_race)
 ```
 
+`Answer:` While whites who are killed by guns are more likely to die because of suicide, blanks and hispanics who are killed by guns are more likely to die because of homicide. 
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police}
+kable(gun_deaths %>% 
+  group_by(police) %>% 
+  summarise(mean_age = mean(age, na.rm = TRUE)))
 
+police_sex <- gun_deaths %>% 
+  group_by(police, sex) %>% 
+  summarise('Number of Gun Deaths' = n()) %>% 
+  mutate("Percentage (%)" = `Number of Gun Deaths` / sum(`Number of Gun Deaths`) * 100)
+kable(police_sex)
+
+police_race <- gun_deaths %>% 
+  group_by(police, race) %>% 
+  summarise('Number of Gun Deaths' = n()) %>% 
+  mutate("Percentage (%)" = `Number of Gun Deaths` / sum(`Number of Gun Deaths`) * 100)
+kable(police_race)
 ```
+
+`Answer:` Victims of police-involved gun deaths are younger. There is a higher proportion of males in police-involved gun deaths. There are higher proportions of blacks and hispanics in police-involved gun deaths.
+
 
 Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
 
 ```{r stats?}
+# Age vs. police
+t.test(age ~ police, data = gun_deaths)
 
+# Gender vs. police
+prop.test(x = police_sex$`Percentage (%)`[c(2,4)], n = c(sum(police_sex$`Number of Gun Deaths`[1:2]), sum(police_sex$`Number of Gun Deaths`[3:4])))
 
+# Black
+prop.test(x = police_race$`Percentage (%)`[c(2,7)], n = c(sum(police_race$`Number of Gun Deaths`[1:5]), sum(police_race$`Number of Gun Deaths`[6:10])))
+
+# Hispanic
+prop.test(x = police_race$`Percentage (%)`[c(3,8)], n = c(sum(police_race$`Number of Gun Deaths`[1:5]), sum(police_race$`Number of Gun Deaths`[6:10])))
+
+police_race
 ```
 
+`Answer:` Victims of police-involved gun deaths are significantly younger. There is a significantly higher proportion of males in police-involved gun deaths. There are significantly higher proportions of blacks and hispanics in police-involved gun deaths.
 
 ```{r police_2}
 
@@ -113,7 +200,9 @@ Think about performing stats such as a t.test to see if differences you are plot
 
 Finally, all together now:
 ```{r police_3}
-
+kable(gun_deaths %>% 
+  group_by(police, race, sex) %>% 
+  summarise('Number of Gun Deaths' = n(), 'Mean Age' = mean(age, na.rm = TRUE)))
 ```
 
 
