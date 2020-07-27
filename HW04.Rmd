@@ -18,25 +18,51 @@ output: github_document
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
+library("knitr")
 
 # read in the data
-
+gun_deaths <- read.csv("gun_deaths.csv") # I decided to store this as a data frame
+gun_deaths
 ```
 
 ## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
 
 Knitr is part of the knitr package. Allows you to change column names and add captions and make pretty tables in your knitted document. Hint: set the argument format = "markdown"
 
+```{r}
+str(gun_deaths)
+summary(gun_deaths)
+```
+
 
 ```{r month, warning=FALSE}
 
+month_abbrev <-as.factor(month.abb) #creates a factor class vector of the built-in character vector containing abbrevations of the months
+
+gun_deaths_months_kable <- gun_deaths %>% 
+    select(year, month) %>% 
+    group_by(month) %>% 
+    count(month)
+
+gun_deaths_months_kable$month <- month_abbrev #changes the numbers that represent the months into their abbreviations
+
+kable(gun_deaths_months_kable, format = "markdown", col.names = c("Month", "# of Deaths"), caption = "Sum of deaths for each month from 2012-2014")
+
 ```
+
+
 
 
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
-
+gun_deaths_months_kable$month = factor(gun_deaths_months_kable$month, levels = month.abb) # to set the order of the factor
+gun_deaths_months_kable %>% 
+    ggplot(aes(x = month, y = n)) +
+    geom_col() +
+    labs(title = "Sum of deaths for each month from 2012-2014",
+         x = "Month",
+         y = "Number of Deaths")
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
