@@ -19,7 +19,7 @@ The gun_deaths.csv is provided in the repository.
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
 
-# read in the data
+gun_deaths <- read_csv("gun_deaths.csv") # read in the data
 
 ```
 
@@ -29,7 +29,8 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 
 ```{r month, warning=FALSE}
-
+library(knitr) #load knitr, required for kable()
+kable(gun_deaths, format = "markdown")
 ```
 
 
