@@ -83,7 +83,7 @@ mean(F_data$age)
 ## How many white males with at least a high school education were killed by guns in 2012?
 ```{r education}
 #The answer is:
-kable(gun_deaths %>% filter(sex=="M") %>% filter(race=="White") %>% filter(year=="2012") %>% count(),format="markdown")
+kable(gun_deaths %>% filter(sex=="M") %>% filter(race=="White") %>% filter(year=="2012") %>% filter(education !="Less than HS")%>% count(), format="markdown")
 ```
 
 ## Which season of the year has the most gun deaths?
