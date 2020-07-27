@@ -38,29 +38,42 @@ kable(gun_deaths, format = "markdown")
 ```{r month_chart}
 gun_deaths_by_month <- gun_deaths %>%
     group_by(month) %>% #Orders table by month
-    count(year, name = "deaths") %>% #Enumerates gun deaths
-    mutate(abMonth = month.abb[month], sd = sd(deaths)) %>% #Adds column of abbreviated month name and standard error
+    count(year, name = "deaths_month") %>% #Enumerates gun deaths
+    mutate(abMonth = month.abb[month], sd = sd(deaths_month)) %>% #Adds column of abbreviated month name and standard error
     ungroup()
 
 #Makes abbreviated months leveled factors
 gun_deaths_by_month$abMonth <- factor(gun_deaths_by_month$abMonth, 
                                       levels = c(month.abb[12:1]))
-#Plots data
+#Plots data of deaths by month
 set.seed(3)
 gun_deaths_by_month  %>% 
-    ggplot(mapping = aes(x = abMonth, y = deaths)) +
-    geom_bar(stat = "summary", fun = "mean", alpha = 0.6, width = 0.4) +
-    geom_errorbar(stat = "summary", mapping = aes(ymin = deaths - sd, 
-                                                  ymax = deaths + sd, width = 0.2)) +
+    ggplot(mapping = aes(x = abMonth, y = deaths_month)) +
+    geom_bar(stat = "summary", fun = "mean", alpha = 0.7, width = 0.4) +
+    geom_errorbar(stat = "summary", 
+                  mapping = aes(ymin = deaths_month - sd, 
+                                ymax = deaths_month + sd, width = 0.2)) +
     scale_y_continuous() + coord_flip() +
     xlab("Month") + ylab("American Gun Deaths\n(average, standard deviation)") +
-    ggtitle("American Gun Deaths (2012-2014)")
+    ggtitle("American Gun Deaths by Month (2012-2014)")
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
+#Selects and enumerates death by intent, trimmed unavailable datum
+gun_deaths_by_intent <- gun_deaths %>%
+    select(intent) %>%
+    count(intent, name = "deaths_intent") %>%
+    filter(intent != "Not Available") %>%
+    arrange(desc(deaths_intent))
 
+#Plots data of deaths by determined intent
+gun_deaths_by_intent %>%
+ggplot(mapping = aes(x = reorder(intent, -deaths_intent), y = deaths_intent)) +
+    geom_bar(stat = "identity", alpha = 0.7, width = 0.7) +
+    xlab("Determined Intent of Gun Death") + ylab("Number of Gun Deaths") +
+    ggtitle("American Gun Deaths by Intent (2012-2014)")
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
