@@ -18,8 +18,10 @@ output: github_document
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
+library(knitr) # load knitr package so that I can use kable() function
 
-# read in the data
+# read in data and define as gun_deaths
+gun_deaths <- read.csv("gun_deaths.csv")
 
 ```
 
@@ -30,12 +32,49 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 ```{r month, warning=FALSE}
 
+# generate new dataframe for this task
+gun_deaths_summary1 <- gun_deaths %>%
+    select(month) %>%
+    group_by(month) %>%
+    count(month) %>%
+    rename(deaths_per_month = n)
+
+# print results as a table using kable()
+kable(gun_deaths_summary1, format = "markdown", align = 'c', col.names = c("Month", "Deaths per Month"))
+
+
 ```
+
+**If we further want to divide the number of gun deaths per month for each given year:**
+
+```{r month_2, warning=FALSE}
+
+# generate new dataframe, almost the same as above but also selecting and grouping by year
+gun_deaths_summary2 <- gun_deaths %>%
+    select(year, month) %>%
+    group_by(year, month) %>%
+    count(month) %>%
+    rename(deaths_per_month = n)
+
+# print results as a table using kable()
+kable(gun_deaths_summary2, format = "markdown", align = 'c', col.names = c("Year", "Month", "Deaths per Month"))
+
+
+```
+
 
 
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
+
+# generate bar graph using the dataframe generated above
+ggplot(data = gun_deaths_summary1, aes(x = factor(month), y = deaths_per_month)) + # make sure month is plotted as factor so that we can convert to abbreviated month name
+    geom_col() +
+    scale_x_discrete(labels=month.abb) + # change x-axis labels to abbreviated month names instead of numbers
+    labs(title = "Number of Gun Deaths for each Month of the Year", subtitle = "Based on Data from 2012 - 2014", x = "Month", y = "Number of Deaths") + # adjust labels
+    theme_classic()   # add a theme (I like to use the pre-set theme theme_classic())
+
 
 ```
 
@@ -43,18 +82,77 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 ```{r intent}
 
+# generate new dataframe looking at the number of gun deaths associated with ech type of intent
+gun_deaths_intent <- gun_deaths %>%
+    select(year, month, intent) %>%
+    group_by(intent) %>%
+    count() %>%
+    rename(number_of_deaths = n)
+
+# print results as a table using kable()
+kable(gun_deaths_intent, format = "markdown", align = 'c', col.names = c("Intent", "Number of Deaths"))
+```
+
+**We can use this output to sort the x-axis accordingly:**
+
+```{r intent_2}
+
+# sort the x-axis based on table above
+gun_deaths_intent$intent <- factor(gun_deaths_intent$intent, levels = c("Suicide", "Homicide", "Accidental", "Undetermined", "Not Available"))
+
+# generate bar graph showing the number of gun deaths associated with each type of intent from highest to lowest value
+ggplot(gun_deaths_intent, aes(x = intent, y = number_of_deaths, color = intent, fill = intent)) +
+    geom_col() +
+    labs(title = "Number of Gun Deaths based on Intent", subtitle = "Based on Data from 2012 - 2014", x = "Intent", y = "Number of Deaths") + #adjust labels
+    theme_classic() + # set theme
+    theme(legend.position = "none") # remove legend
+
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
 
+# generate new dataframe looking at the age of gun death victims by sex
+gun_deaths_sex <- gun_deaths %>%
+    select(sex, age) %>%
+    group_by(sex) 
+
+# change data type of age column to integer
+gun_deaths_sex$age <- as.integer(gun_deaths_sex$age)
+
+# generate boxplot 
+ggplot(gun_deaths_sex) +
+    geom_boxplot(aes(sex, age, fill = sex)) +
+    labs(title = "Age of Gun Death Victims by Sex", x = "Sex", y = "Age") + # adjust labels
+    theme_bw() + # set theme
+    theme(legend.position = "none") # remove legend
+    
+
+# find the average age of female gun death victims
+gun_deaths_average_female <- gun_deaths_sex %>%
+    filter(sex == "F") %>%
+    summarize(average_age = mean(age, na.rm = TRUE)) # na.rm allows to 'remove' NA values
+
+head(gun_deaths_average_female)
+
 ```
 
+
+**The average female gun death victim age was ~43.7 years.**
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
+
+# generate new dataframe looking at how many white males with at least a high school education were killed by guns in 2012
+gun_deaths_education <- gun_deaths %>%
+    select(sex, education, year, race) %>%
+    filter(sex == "M", year == 2012, race == "White", education %in% c('HS/GED', 'Some college', 'BA+')) %>% # I believe that this should include all education levels with at least a high school education
+    count()
+
+# print the number of white males killed as kable() output
+kable(gun_deaths_education, format = "markdown", align = 'c', col.names = c("Number of White Males killed"))
 
 ```
 
@@ -70,7 +168,30 @@ Assume that:
 
 ```{r season}
 
+# generate new dataframe to look at the season of the year with the most gun deaths
+gun_deaths_season <- gun_deaths %>%
+    select(month) 
+
+# convert the 'month' variable to a factor
+gun_deaths_season$month <- as.factor(gun_deaths_season$month)
+
+# convert from months to season
+gun_deaths_season%>%
+    mutate(season = fct_collapse(.f = month,
+      Spring = c("4", "5", "6"),
+      Summer = c("7", "8", "9"),
+      Autumn = c("10", "11", "12"),
+      Winter = c("1", "2", "3"))) %>%
+    count(season) %>% # count number of deaths per season
+    arrange(desc(n)) # arrange in descending order so we can see which season has the most deaths
+
+
+
+
+
 ```
+
+**As seen by the table above, the season with the most gun deaths is summer**
 
 
 # These are more open ended questions from here on out, you could look at making multiple summaries or types of plots. 
@@ -79,17 +200,69 @@ Assume that:
 
 ```{r race}
 
+# generate new dataframe looking at number of gun deaths based on race and intent
+gun_deaths_race <- gun_deaths %>%
+    select(intent, race) %>%
+    filter(intent %in% c('Suicide', 'Homicide')) %>%
+    filter(race %in% c('White', 'Black', 'Hispanic')) %>%
+    group_by(race, intent) %>%
+    count(race)
+
+# generate bar chart to visualize the dataframe generated above
+ggplot(gun_deaths_race, aes(x = gun_deaths_race$race, y = n, fill = intent)) +
+    geom_col(position = "dodge", color = "black") +
+    labs(title = "Number of Gun Deaths by Race and Intent", x = "Race", y = "Number of Deaths") +
+    scale_fill_discrete(name = "Intent") + # adjust labels
+    theme_classic() # set theme
+
+
 ```
 
 (hint maybe looking at percentages would be good)
 ```{r race_2}
 
+# generate new dataframe to calculate the percentage of deaths based on race and intent
+gun_deaths_race_2 <- gun_deaths_race %>%
+    ungroup() %>%
+    group_by(race) %>%
+    mutate(percentage = 100*n / sum(n)) # generate new variable that shows the percentage
+
+# print the new dataframe as kable() output
+kable(gun_deaths_race_2, format = "markdown", align = 'c', col.names = c("Race", "Intent", "Number of Deaths", "Percentage (by Race)"))
+
+# generate bar chart to visualize the percentage of deaths based on race and intent
+ggplot(gun_deaths_race_2, aes(x = gun_deaths_race$race, y = percentage, fill = intent)) +
+    geom_col(position = "dodge", color = "black") +
+    labs(title = "Percentage of Gun Deaths by Intent", x = "Race", y = "Percentage of Deaths by Intent") + # adjust labels
+    scale_fill_discrete(name = "Intent") + # this allows to rename the legend title
+    theme_classic() # set theme
 ```
 
+
+**Looking at the percentage of gun deaths by intent, we find that for Black and Hispanic, the majority of gun death victims died as a result of homicide (85% and 64% respectively), whereas for white people, the majority of gun death victims died as a result of suicide (86%).**
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police}
+
+# change the format of the age and police variables of the gun_deaths dataframe
+gun_deaths$age <- as.integer(gun_deaths$age)
+gun_deaths$police <- as.factor(gun_deaths$police)
+
+# generate new dataframe looking at number of gun deaths based on police involvement and age
+gun_deaths_police_age <- gun_deaths %>%
+    select(police, age) %>%
+    group_by(police) %>%
+    count(age)
+    
+# generate boxplot visualizing the number of gun deaths based on police involvement and age
+ggplot(gun_deaths_police_age, aes(x = police, y = age, fill = police)) +
+    geom_boxplot() +
+    scale_x_discrete(breaks = c("0", "1"), labels = c("No Police Involvement", "Police Involvement")) + # rename x-axis labels
+    labs(title = "Age of Gun Death Victims based on Police Involvement", x = "", y = "Age") + # adjust labels
+    theme_classic() + # set theme 
+    theme(legend.position = "none") # remove legend
+
 
 ```
 
@@ -97,22 +270,66 @@ Think about performing stats such as a t.test to see if differences you are plot
 
 ```{r stats?}
 
+# I want to test for significance by doing a t-test
+
+# generate new variables that can be used in t.test(x,y) function
+police_not_involved_age <- gun_deaths %>%
+    select(police, age) %>%
+    filter(police == 0)
+
+police_involved_age <- gun_deaths %>%
+    select(police, age) %>%
+    filter(police == 1)
+
+# do t-test using the newly generated variables
+t.test(police_not_involved_age$age, police_involved_age$age)
+
+
 
 ```
 
+#### The t-test suggests that there is a significant difference in the age of gun death victims based on whether police was involved or not. 
 
 ```{r police_2}
 
+# generate new dataframe looking at number of gun deaths based on police involvement and race
+gun_deaths_police_race <- gun_deaths %>%
+    select(police, race) %>%
+    group_by(race, police) %>%
+    count(race) %>%
+    arrange(race)
+
+# generate bar graph visualizing number of gun deaths based on police involvement and race
+ggplot(gun_deaths_police_race, aes(x = race, y = n, fill = police)) +
+    geom_col(position = "dodge", color = "black") +
+    scale_x_discrete(breaks = c("Asian/Pacific Islander", "Black", "Hispanic", "Not Availabletive American/Not Availabletive Alaskan", "White"), labels = c("Asian/Pacific Islander", "Black", "Hispanic", "NA", "White")) + # adjust labels on x-axis
+    labs(title = "Number of Deaths based on Police Involvement by Race", x = "Race", y = "Number of Deaths") + # adjust other labels 
+    scale_fill_discrete(labels = c("No Police Involvement", "Police Involvement")) + # adjust legend text
+    theme_classic() + # set theme
+    theme(legend.title = element_blank()) # remove legend title
+
+
+
 ```
 
-```{r stats_2?}
-
-
-```
 
 
 Finally, all together now:
 ```{r police_3}
+
+# generating a new dataframe, looking at age of gun death victims based on race and police involvement
+gun_deaths_police_age_race <- gun_deaths %>%
+    select(police, age, race) %>%
+    group_by(race, police) 
+    
+# generate boxplot visualizing age of gun death victims based on race and police involvement
+ggplot(gun_deaths_police_age_race, aes(x = race, y = age, fill = police)) +
+    geom_boxplot(outlier.shape = NA) +
+    scale_x_discrete(breaks = c("Asian/Pacific Islander", "Black", "Hispanic", "Not Availabletive American/Not Availabletive Alaskan", "White"), labels = c("Asian/Pacific Islander", "Black", "Hispanic", "NA", "White")) + # adjust labels on x-axis
+    labs(title = "Age of Gun Death Victims based on Race and Police Involvement", x = "Race", y = "Age") + #adjust other labels
+    scale_fill_discrete(labels = c("No Police Involvement", "Police Involvement")) + # adjust legend text
+    theme_classic() + # set theme
+    theme(legend.title = element_blank()) # remove legend title
 
 ```
 
