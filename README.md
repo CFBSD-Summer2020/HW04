@@ -1,4 +1,4 @@
-# HW04
+# HW04 Busayo Bolonduro
 Due Monday July 27th
 
 ### Option 1
@@ -6,3 +6,5 @@ Explore a dataset. That's right, like last week find some data online or use you
 
 ### Option 2
 I'm also providing a more traditional HW assignment, similar to HW02 this week if you are just wanting to have a more traditional assignment. It uses data from FiveThirtyEight to explore gun deaths from 2012-2014. [See the HW04.Rmd file for details.](HW04.Rmd)
+
+I chose option 1, where I analyzed information from an NFL dataset. 

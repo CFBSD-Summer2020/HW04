@@ -1,0 +1,47 @@
+---
+title: "HW4 Busayo Bolonduro"
+author: "Olubusayo Bolonduro"
+date: "7/26/2020"
+output: html_document
+---
+
+```{r, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(na.tools)
+library(ggimage)
+```
+
+## HW4: Seattle Seahawks Offensive Breakdown
+
+My goal here was to observe the average offensive trends of the best team in the NFL, the Seattle Seahawks. Using some of the dpylr functions, I generated a plot where I could compare the average yards gained based off of the situation and play type. 
+```{r,include=FALSE}
+yr2019pbp <- read_csv(url("https://github.com/ryurko/nflscrapR-data/raw/master/play_by_play_data/regular_season/reg_pbp_2019.csv"))
+```
+
+```{r, message=FALSE}
+pbp_2019_SEA <- yr2019pbp %>%
+  select(qtr,down, play_type,desc,yards_gained,posteam,td_team)%>%
+  filter(posteam == "SEA", play_type == "pass" | play_type == "run")%>%
+  mutate(SEA_TD = (td_team == "SEA"))%>%
+  arrange(desc(yards_gained))
+avgyards_bycategory <-pbp_2019_SEA %>%
+  group_by(play_type, down, qtr) %>%
+  summarize(avg_yards = mean(yards_gained))
+
+breakdown_plot <- ggplot(avgyards_bycategory, aes(down, avg_yards, color = as.factor(qtr), shape = play_type)) +
+ geom_point()+
+  labs(x = "Down", y ="Average Yards Gained",title = "Seahawks 2019 Offensive Production Breakdown")+
+    theme(plot.title = element_text(hjust = 0.5))+
+  scale_color_discrete(name = "Quarter", labels = c("1st","2nd","3rd","4th","Overtime"))+
+  scale_shape_discrete(name = "Play Type", labels = c("Pass","Run"))
+```
+The trends from this plot articulate some of the noticeable observations during gameplay from the Seahawks' 2019 season. For example, it's interesting to observe how 2nd down passes gradually decreased yardage after the first quarter, only to jump back up in the fourth quarter. 
+
+The lack of sample size from overtime periods and from 4th down plays makes it hard to give those categories much credit due to bias and relatively high variability. 
+```{r, message=FALSE, warning=FALSE}
+breakdown_plot
+knitr::kable(avgyards_bycategory)
+```
+
