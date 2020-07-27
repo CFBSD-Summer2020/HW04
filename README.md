@@ -1,8 +1,8 @@
 # HW04
 Due Monday July 27th
 
-My submission code is found on [HW04.Rmd](HW04.Rmd).
-My submission file can be seen with [HW04.md](Hw04.md).
+My submission code for option 1 is found on [HW04.Rmd](HW04.Rmd).
+My submission file can be seen with [HW04.md](HW04.md).
 
 ### Option 1
 Explore a dataset. That's right, like last week find some data online or use your own data and manipulate it and explore it to create some data summaries.  You can look at that homework for a list of datasets. Make use of the major dplyr functions select(), mutate(), arrange(), group_by(), summarize(), count() or baseR equivalents (there isn't a good baseR equivalent for many of these functions though). If you are using a Rmd, think about making your table summaries and printing them nicely with knitr::kable() and still think about plotting some data.  
