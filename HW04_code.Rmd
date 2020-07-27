@@ -1,0 +1,81 @@
+---
+title: "HW04_code"
+author: "Laura Hunter"
+date: "7/27/2020"
+output: git_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Cleaning the Data
+
+My hope with this assignment is to take the "2lot_results.csv" file that is in this directory and change the data in it so that it looks like the "2lot_results_clean.csv" file. Once I've done that, I'll be able to use the code I made from last week to plot Subject 8's data.
+
+```{r data cleaning}
+library(tidyverse) #load tidyverse packages
+
+unclean_2lot <- read.csv("2lot_results.csv", stringsAsFactors = FALSE) #Load raw 2lot data
+
+unclean_2lot <- unclean_2lot %>%
+  filter(timing =="ok") %>% #remove all trials with timing errors
+  select(block_name, left_line1:right_line2, choice) %>% #only cols necessary for this analysis
+  mutate(left_EV = (left_line1 + left_line2)/2) %>% #expected value of left side
+  mutate(left_sigma = left_line2 - left_line1) %>% #sigma of left side
+  mutate(right_EV = (right_line1 + right_line2)/2) %>% #expected value of right side
+  mutate(right_sigma = right_line2 - right_line1) %>% #sigma of right side
+  select(block_name, choice:right_sigma) %>% #no longer need line data
+  mutate(deltaEV = if_else(left_sigma > right_sigma, true = left_EV - right_EV, false = right_EV - left_EV)) %>% #deltaEV is hi sig - low sig
+  mutate(chose_left_hi = if_else((left_sigma > right_sigma) & (choice == "left"), true = T, false = F)) %>% #chose left when left is hi sig
+  mutate(chose_right_hi = if_else((left_sigma < right_sigma) & (choice == "right"), true = T, false = F)) %>% #chose right when right is hi sig
+  mutate(good_choice = chose_left_hi + chose_right_hi) %>% #a good choice is a high choice
+  select(block_name, deltaEV, good_choice) %>% #we don't need the above, transitional columns
+  arrange(block_name, deltaEV)#let's arrange by block and deltaEV
+
+unclean_2lot$good_choice <- factor(unclean_2lot$good_choice, levels = c(0,1)) #factor the good_choice to ensure no data drops
+unclean_2lot$block_name <- factor(unclean_2lot$block_name, levels = c("observe", "guess", "intervene", "observe-repeat")) #level to match clean
+
+cleaned_deltaEV <- unclean_2lot %>% 
+  group_by(block_name, deltaEV) %>% #group by block and deltaEV
+  count(deltaEV, .drop = FALSE) #how many of each deltaEV within a block
+
+new_2lot_results_clean <- unclean_2lot %>%
+  group_by(block_name, deltaEV) %>% #group by vlock and deltaEV
+  count(good_choice, .drop = FALSE) %>% #how many good choices of each deltaEV within block
+  rename(chose_hi_var = n) %>% #rename this column
+  filter(good_choice == 1) %>% #only use the good choices
+  select(-good_choice) #we don't need the good_choice column anymore
+
+new_2lot_results_clean$delta_count <- cleaned_deltaEV$n #add the delta_count column from the cleaned_deltaEV
+
+write.csv(new_2lot_results_clean, "new_2lot_results_clean.csv") #save as CSV
+
+```
+
+## Plotting the Data
+
+So here we will see if I can plot this data. I remember from the plots I made in MATLAB that Subject 8's data curves are not as pretty as Subject 7's (which is why I used Subject 7's data last week), but let's see:
+
+```{r plot it}
+lottery_data <- read.csv("new_2lot_results_clean.csv", stringsAsFactors = FALSE) #load data
+
+ggplot(lottery_data, aes(deltaEV,(chose_hi_var/delta_count))) + #plot deltaEV vs chose_hi_var over delta_count
+  facet_grid(cols = vars(block_name)) + #separate by block
+  geom_point(color = "dodgerblue2") + #this is a nice shade of blue
+  geom_smooth(se = F, color = "orange") + #orange is good contrast
+  labs(x = "HighVar - LowVar", y = "% Chose High Var", title = "Subject 8") + #add appropriate labels
+  theme(plot.title = element_text(hjust = 0.5)) #center plot title
+
+```
+
+## The Summarize Verb
+
+The README file for this homework instructs that I "make use of the major dplyr functions select(), mutate(), arrange(), group_by(), summarize(), count() or baseR equivalents." I used all of those except for summarize() (because I didn't need summarize!). But I swear I know how to use it! I've included a use of it below to prove I didn't forget it existed! And to sanity check my data...
+
+```{r summarizing}
+
+min_deltaEV <- unclean_2lot %>% summarize(min(deltaEV)) #should be -110
+max_deltaEV <- unclean_2lot %>% summarize(max(deltaEV)) #should be 180
+
+```
