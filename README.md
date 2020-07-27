@@ -1,6 +1,8 @@
 # HW04
 Due Monday July 27th
 
+**For this hw assignemnt, I decided to do option 2. Here is the link to my [code](HW04.Rmd) and [markdown](HW04.md).**
+
 ### Option 1
 Explore a dataset. That's right, like last week find some data online or use your own data and manipulate it and explore it to create some data summaries.  You can look at that homework for a list of datasets. Make use of the major dplyr functions select(), mutate(), arrange(), group_by(), summarize(), count() or baseR equivalents (there isn't a good baseR equivalent for many of these functions though). If you are using a Rmd, think about making your table summaries and printing them nicely with knitr::kable() and still think about plotting some data.  
 
