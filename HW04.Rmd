@@ -18,7 +18,6 @@ output: github_document
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
-
 gun_deaths <- read_csv("gun_deaths.csv") # read in the data
 
 ```
@@ -37,7 +36,25 @@ kable(gun_deaths, format = "markdown")
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
+gun_deaths_by_month <- gun_deaths %>%
+    group_by(month) %>% #Orders table by month
+    count(year, name = "deaths") %>% #Enumerates gun deaths
+    mutate(abMonth = month.abb[month], sd = sd(deaths)) %>% #Adds column of abbreviated month name and standard error
+    ungroup()
 
+#Makes abbreviated months leveled factors
+gun_deaths_by_month$abMonth <- factor(gun_deaths_by_month$abMonth, 
+                                      levels = c(month.abb[12:1]))
+#Plots data
+set.seed(3)
+gun_deaths_by_month  %>% 
+    ggplot(mapping = aes(x = abMonth, y = deaths)) +
+    geom_bar(stat = "summary", fun = "mean", alpha = 0.6, width = 0.4) +
+    geom_errorbar(stat = "summary", mapping = aes(ymin = deaths - sd, 
+                                                  ymax = deaths + sd, width = 0.2)) +
+    scale_y_continuous() + coord_flip() +
+    xlab("Month") + ylab("American Gun Deaths\n(average, standard deviation)") +
+    ggtitle("American Gun Deaths (2012-2014)")
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
