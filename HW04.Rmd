@@ -1,5 +1,7 @@
 ---
 title: "Exploring Gun Deaths in America"
+author: Patrick Cantwell
+date: "7/27/2020"
 output: github_document
 ---
 
@@ -19,20 +21,15 @@ The gun_deaths.csv is provided in the repository.
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
 library("knitr")
+library("devtools")
 
 # read in the data
 gun_deaths <- read.csv("gun_deaths.csv") # I decided to store this as a data frame
-gun_deaths
 ```
 
 ## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
 
 Knitr is part of the knitr package. Allows you to change column names and add captions and make pretty tables in your knitted document. Hint: set the argument format = "markdown"
-
-```{r}
-str(gun_deaths)
-summary(gun_deaths)
-```
 
 
 ```{r month, warning=FALSE}
@@ -134,11 +131,16 @@ gun_death_age_sex2 %>%
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
-```{r education}
-gun_deaths %>% 
-    select(year, sex, race)
-```
+```{r education, warning= FALSE} 
+gun_deaths_e_r_s <- gun_deaths %>% 
+    select(year, education, race, sex) %>% 
+    filter(education == c("BA+", "Some college", "HS/GED"), race == "White", sex == "M", year == "2012") %>% 
+    count()
 
+print(gun_deaths_e_r_s$n[1])
+    
+```
+**5,078** white males with at least a high school education were killed by guns in 2012.
 
 ## Which season of the year has the most gun deaths?
 
@@ -150,51 +152,123 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
+gun_deaths_season <- gun_deaths %>% 
+    select(month) %>% 
+    count(month)
+    
+gun_deaths_season$month <- month_abbrev
 
+gun_deaths_season2 <- gun_deaths_season %>% 
+    summarize(Winter = sum(n[1:3]), Spring = sum(n[4:6]), Summer = sum(n[7:9]), Fall = sum(n[10:12]))
+
+kable(gun_deaths_season2, format = "markdown")
 ```
 
+This table shows that Summer has the most total gun deaths from 2012-2014
 
 # These are more open ended questions from here on out, you could look at making multiple summaries or types of plots. 
 
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 ```{r race}
+gun_death_s_h <- gun_deaths %>% 
+    select(race, intent) %>% 
+    filter(race == c("White", "Black", "Hispanic"), intent == c("Suicide", "Homicide")) %>% 
+    group_by(race) %>% 
+    count(intent) %>% 
+    mutate(total_death = sum(n)) %>% 
+    mutate(fraction_intent = n / total_death)
 
+gun_death_s_h %>% 
+    ggplot(aes(x = race, y = fraction_intent, fill = intent)) +
+    geom_col() +
+    labs(title = "proportion of Gun Deaths that are Homicides or Suicides by Race, 2012-2014",
+         x = "Race",
+         y = "Proportion") +
+    scale_y_continuous(expand = c(0,0))
 ```
 
-(hint maybe looking at percentages would be good)
-```{r race_2}
-
-```
+The graph shows that a White person killed by a gun is more likely to die by suicide, while a Black or Hispanic person who is killed by a gun is more likely to die by homicide.
 
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police}
+police_factor <- c("Uninvolved", "Involved")
+gd_police_race <- gun_deaths %>% 
+    select(age, race, police) %>% 
+    filter(age != "Not Available") %>% 
+    group_by(race) %>% 
+    count(police) %>% 
+    mutate(total_death = sum(n)) %>% 
+    mutate(fraction = n / total_death)
 
-```
+gd_police_race$police <- as.factor(rep.int(police_factor, 5)) #Change police column to factor
 
-Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
+gd_police_race2 <- gd_police_race %>% 
+    filter(police == "Involved")
 
-```{r stats?}
 
+gd_police_race2 %>%  #Definitely not pretty, but it will do
+    ggplot(aes(x = reorder(race, fraction), y = fraction, fill = "red4")) +
+    geom_col() +
+    labs(title = "Fraction of Gun Death that Involve Police by Race",
+        y = "Fraction of Gun Deaths Involving Police",
+        x = "Race of Victim") +
+    theme(axis.text.x = element_text(angle = 20, hjust = 1)) + #There are packages that allow for the axis text to wrap, but I decided not to use it
+    theme(legend.position = "none")
 
 ```
 
 
 ```{r police_2}
+gd_police_age <- gun_deaths %>% 
+    select(age, police) %>% 
+    filter(age != "Not Available") %>% 
+    mutate(age = as.numeric(age), police = as.factor(police)) %>% 
+    group_by(age) %>% 
+    count(police) %>% 
+    mutate(total_death = sum(n)) %>% 
+    mutate(fraction = n / total_death)
+
+levels(gd_police_age$police) <- police_factor
+
+gd_police_age2 <- gd_police_age %>% 
+    filter(police == "Involved")
+
+gd_police_age2 %>% # missing columns represent zero police-involved deaths for that age
+    ggplot(aes(x = age, y = fraction, fill = "red4")) +
+    geom_col() +
+    labs(title = "Fraction of Gun Death that Involve Police by Age",
+        y = "Fraction of Gun Deaths Involving Police",
+        x = "Age of Victim") +
+    theme(legend.position = "none")
 
 ```
 
-```{r stats_2?}
-
-
-```
 
 
 Finally, all together now:
 ```{r police_3}
+gd_police_a_r <- gun_deaths %>% 
+    select(age, race, police) %>% 
+    filter(age != "Not Available", race == c("White", "Black", "Hispanic")) %>% #race was filted because 
+    mutate(age = as.numeric(age), police = as.factor(police), race = as.factor(race)) %>% 
+    group_by(race, age) %>% 
+    count(police) %>% 
+    mutate(total_death = sum(n)) %>% 
+    mutate(fraction = n / total_death)
 
+levels(gd_police_a_r$police) <- police_factor
+
+gd_police_a_r2 <- gd_police_a_r %>% 
+    filter(police == "Involved")
+
+gd_police_a_r2 %>% 
+    ggplot(aes(x = age, y = fraction, fill = race)) +
+    geom_col()+
+    facet_grid(rows = vars(race)) +
+    theme(legend.position = "none")
 ```
 
 
