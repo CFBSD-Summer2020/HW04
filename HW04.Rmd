@@ -103,7 +103,10 @@ gun_deaths_by_age_sex %>%
     geom_point(size = 0, position = position_jitter(width = 0.3), alpha = 0.1) +
     scale_color_brewer(palette = "Set2") +
     xlab("Sex of Victims") + ylab("Age of Victims") +
-    ggtitle("Sex and Age of Gun Death Victims in America (2012-2014)")
+    ggtitle("Sex and Age of Gun Death Victims in America (2012-2014)") +
+    scale_x_discrete(labels=c("F" = "Female", "M" = "Male")) +
+    theme(legend.position = "none", axis.ticks.x = element_blank(),
+          plot.title = element_text(hjust = 0.5))
     
 
 gun_deaths_by_age_sex[2,2:3]
@@ -162,7 +165,8 @@ gun_deaths_by_month %>%
     xlab("Season") + ylab("Gun Death Victims") +
     ggtitle("Season and Year of Gun Deaths in America (2012-2014)") +
     theme(legend.title = element_blank(), legend.position = c(0.5, 0.93),
-          legend.background = element_blank(), legend.direction = "horizontal")
+          legend.background = element_blank(), legend.direction = "horizontal", 
+          plot.title = element_text(hjust = 0.5))
 ```
 
 
@@ -170,19 +174,39 @@ gun_deaths_by_month %>%
 
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
-```{r race}
+```{r race whites suicide prevalence}
+#Creates table based on determined gun death intent and race
+gun_deaths_by_race <- gun_deaths %>%
+    select(intent, race) %>%
+    group_by(intent, race) %>%
+    add_count(intent, name = "deaths_intent") %>%
+    ungroup() %>%
+    distinct() %>% #Removes duplicate rows
+    group_by(race) %>% 
+    mutate(pop_deaths_race = sum(deaths_intent)) %>%
+    mutate(per_int_race = deaths_intent/ pop_deaths_race * 100) %>% 
+    ungroup()
 
+gun_deaths_by_race %>%
+    filter(race %in% c("Black", "Hispanic", "White")) %>% 
+    ggplot(mapping = aes(x = "", y = per_int_race, fill = intent, group = intent)) +
+    geom_bar(stat = "identity", color = "white") + facet_grid(cols = vars(race)) + 
+    coord_polar("y") + scale_fill_brewer(palette = "Set1") + theme_void() + 
+    ggtitle("Percent of Gun Deaths by Race and Intent (2012-2014)") +
+    theme(legend.title = element_blank(), legend.direction = "horizontal",
+          legend.position = c(0.5, -0.1), plot.title = element_text(hjust = 0.5))
+    
 ```
 
 (hint maybe looking at percentages would be good)
-```{r race_2}
-
+```{r race_2 blacks and hispanics suicide prevalence}
+#See above
 ```
 
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
-```{r police}
+```{r police involvement and age}
 
 ```
 
