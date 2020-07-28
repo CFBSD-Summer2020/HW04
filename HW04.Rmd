@@ -104,14 +104,14 @@ Assume that:
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 ```{r race}
-gun_deaths_race <- thedata %>%
-    select(intent, race) %>%
-    filter(intent %in% c('Suicide', 'Homicide')) %>%
-    filter(race %in% c('White', 'Black', 'Hispanic')) %>%
-    count(race)
+#gun_deaths_race <- thedata %>%
+#    select(intent, race) %>%
+#    filter(intent %in% c('Suicide', 'Homicide')) %>%
+#    filter(race %in% c('White', 'Black', 'Hispanic')) %>%
+#    count(race)
 
-ggplot(gun_deaths_race, aes(x = gun_deaths_race$race, y = n, fill = intent)) +
-    labs(x = "Race", y = "Number of Deaths") 
+#ggplot(gun_deaths_race, aes(x = gun_deaths_race$race, y = n, fill = intent)) +
+#    labs(x = "Race", y = "Number of Deaths")
 ```
 ## Seems like I got stuck here and ran out of time this week. When I run the code up to here it gives me an error stating that object 'intent' could not be found? Will come back to this and try to figure it out when I have more time.
 
