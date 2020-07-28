@@ -19,6 +19,7 @@ The gun_deaths.csv is provided in the repository.
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
 gun_deaths <- read_csv("gun_deaths.csv") # read in the data
+gun_deaths <- gun_deaths %>% mutate(race = replace(race, race == "Not Availabletive American/Not Availabletive Alaskan", "Native American/Native Alaskan")) #fixed typo from import
 
 ```
 
@@ -207,29 +208,67 @@ gun_deaths_by_race %>%
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police involvement and age}
+#Looks at deaths 
+gun_deaths_by_police <- gun_deaths %>%
+    transmute(police, age = as.numeric(age), race) %>%
+    add_count(race, name = "deaths_race") %>% #enumerates victims by race
+    add_count(age, name = "deaths_age") %>% #enumeratres victims by age
+    add_count(police, name = "deaths_police") %>% #enumerates victims of police
+    group_by(police, age) %>%
+    #removes zero values for determining police involvement relationships
+    filter(police!=0) %>%
+    #determines victims of polic by age
+    mutate(deaths_age_police = sum(police)) %>%
+    ungroup() %>%
+    group_by(police, race) %>%
+    #determines victims of polic by race
+    mutate(deaths_race_police = sum(police)) %>%
+    ungroup() %>%
+    group_by(police, age, race) %>%
+    #determines victims of polic by age and race
+    mutate(deaths_age_race_police = sum(police)) %>% 
+    ungroup() %>% ##VERY UNSURE HOW OFTEN I SHOULD USE UNGROUP, SEND HELP
+    distinct() %>% #removes redundant values
+    mutate(per_deaths_race_police = deaths_race_police/ deaths_race * 100) %>%
+    mutate(per_deaths_age_police = deaths_age_police/ deaths_age * 100) %>%
+    mutate(per_deaths_age_race_police = deaths_age_race_police/ deaths_police *100)
 
+#Plot for age and police
+gun_deaths_by_police %>%
+    ggplot(mapping = aes(x = age, y = deaths_age_police)) +
+    geom_point() + 
+    labs(x = "Age", y = "Gun Death Involving Police", 
+         title = "Age of Victims of Gun Death Involving Police (2012-2014)") +
+    theme()
 ```
 
 Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
 
-```{r stats?}
-
-
-```
-
-
-```{r police_2}
+```{r stats? police and age}
+gun_deaths_by_police %>%
+    {t.test(.$deaths_age_police , .$age, var.equal = TRUE)}
 
 ```
 
-```{r stats_2?}
 
+```{r police_2 and race}
+#Plot for race and police
+gun_deaths_by_police %>%
+    ggplot(mapping = aes(x = race, y = per_deaths_race_police)) +
+    geom_point(size = 6) + scale_fill_brewer(palette = "Set1") +
+    labs(x = "Race", y = "Gun Deaths involving Police (percent)", 
+         title = "Race of Victims of Gun Death Involving Police (2012-2014)")
+```
+
+```{r stats_2? police and race}
+gun_deaths_by_police %>%
+    {t.test(.$per_deaths_race_police , .$deaths_race_police, var.equal = TRUE)}
 
 ```
 
 
 Finally, all together now:
-```{r police_3}
+```{r police_3 and age and race}
 
 ```
 
