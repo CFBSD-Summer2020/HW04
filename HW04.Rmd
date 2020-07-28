@@ -18,7 +18,7 @@ output: github_document
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
-
+library(knitr)
 # read in the data
 
 ```
@@ -29,33 +29,55 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 
 ```{r month, warning=FALSE}
+gundeaths<-read_tsv("gun_deaths.txt",col_types="nncncicncc")
 
 ```
+```{r}
+gundeathspermonth<-gundeaths%>% select(year,month)%>%mutate(month=factor(month,labels=c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec")))%>%count(month)%>%rename(deaths=n)
+kable(gundeathspermonth)
+```
+
+
+
+
 
 
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
-
+ggplot(gundeathspermonth,aes(x=month,y=deaths))+geom_bar(stat="identity",fill="red")
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
-
+gundeathsintent<-gundeaths%>%select(intent)%>%count(intent, sort=TRUE)
+ggplot(gundeathsintent,aes(x=reorder(intent,-n),y=n, fill=intent))+geom_bar(stat="identity")
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
+Guns_age_sex<-gundeaths%>%select(sex,age)
+ggplot(Guns_age_sex, aes(sex,age))+geom_boxplot()
 
+
+
+avg_age_female_gundeath<-Guns_age_sex%>%
+    filter(sex=="F",!is.na(age))%>%
+summarize(avg_age_female_death=mean(age))
+kable(avg_age_female_gundeath)
 ```
 
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
-
+white_male_highschool<-gundeaths%>%
+select(year,sex,education)%>%
+filter(sex=="M",year==2012,education%in%c("HS/GED","Some college","BA+"))%>%count(sex,education)
+kable(white_male_highschool)
+#21727 white males with atleast a high school education were killed in 2012
 ```
 
 
@@ -69,7 +91,10 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
-
+gundeathseasons<-gundeathspermonth%>%
+summarize(winter=sum(8273,7093,8289),spring=sum(8455,8669,8677),summer=sum(8989,8783,8508),fall=sum(8406,8243,8413))
+#not sure of a better way to do this
+kable(gundeathseasons)
 ```
 
 
@@ -78,19 +103,30 @@ Assume that:
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 ```{r race}
-
+gundeathswhite<-gundeaths%>%
+    select(race,intent)%>%filter(race=="White",intent%in%c("Suicide","Homicide"))%>%count(intent)%>%
+    rename(deaths=n)
+kable(gundeathswhite)
+#Whites suffered more gundeaths due to suicide than homicide from 2012-2014
 ```
 
 (hint maybe looking at percentages would be good)
-```{r race_2}
-
+```{r}
+zz<-gundeaths%>%select(race,intent)%>%
+    filter(race%in%c("White","Hispanic","Black"),intent%in%c("Suicide","Homicide"))%>%
+    count(race,intent)%>%
+    rename(deaths=n)%>%mutate(total_deaths=sum(deaths))%>%transmute(race,intent,deaths,Percent_total_deaths=deaths/total_deaths*100)
+kable(zz)
+#It can be seen that blacks have much higher gun deaths from homicide than suicide. The difference of homicide and suicides for Hispanics is much less drastic than it is for blacks and whites. Once again it is shown here that whites 
 ```
 
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police}
-
+gundeathspolice<-gundeaths%>%select(race,police,age)%>%filter(police==1,race%in%c("White","Black","Hispanic","Asian/Pacific Islander"))
+ggplot(gundeathspolice,aes(age))+geom_bar(aes(fill=race),alpha=0.5)+scale_x_continuous(breaks=seq(10,87,5))
+#It can be seen that whites have lower gun deaths when police are involved compared to hispanics, blacks, and asians especially within the age range of 15-40
 ```
 
 Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
