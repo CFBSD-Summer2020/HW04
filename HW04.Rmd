@@ -17,10 +17,14 @@ output: github_document
 
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
-library(tidyverse)    # load tidyverse packages, including ggplot2
+library(tidyverse)
+library(ggplot2)
+# load tidyverse packages, including ggplot2
 
 # read in the data
+gun_deaths <- read.csv("gun_deaths.csv")
 
+head(gun_deaths)
 ```
 
 ## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
@@ -29,19 +33,42 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 
 ```{r month, warning=FALSE}
+deaths_per_month <- gun_deaths %>%
+    count(month)%>%
+    rename(deaths = n)
 
+deaths_per_month<-transform(deaths_per_month, MonthAbb = month.abb[month])
+deaths_per_month$MonthAbb <- factor(deaths_per_month$MonthAbb, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+
+deaths_per_month
+    
 ```
 
 
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
+ggplot(deaths_per_month, aes(MonthAbb, deaths))+
+    geom_bar(stat="identity")+
+    labs(x="Month", y="Deaths", title="Deaths Per Month")
 
+deaths_per_month
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
+death_intent <- gun_deaths%>%
+    count(intent)%>%
+    rename(deaths=n)%>%
+    arrange(deaths)
+
+ggplot(death_intent, aes(x=reorder(intent, -deaths), y=deaths))+
+    geom_bar(stat="identity")+
+    labs(x="Intent", y="Deaths", title="Deaths per Intent Cause")
+
+death_intent
+    
 
 ```
 
@@ -49,13 +76,34 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 ```{r age_&_sex}
 
+sex_age_death <- gun_deaths%>%
+    filter(age !="Not Available")%>%
+    mutate(age = as.numeric(age))%>%
+    select(sex, age)%>%
+    group_by(age)%>%
+    count(sex)%>%
+    arrange(age)%>%
+    rename(deaths=n)%>%
+    ungroup()
+
+ggplot(sex_age_death, aes(x=sex, y=age, color=sex))+
+    geom_boxplot()
+
+
+sex_age_death%>%
+    filter(sex=="F")%>%
+    summarize(average_f=mean(age))
+
 ```
 
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
-
+gun_deaths%>%
+    filter(race=="White", sex=="M", education!="Less than HS", year ==2012)%>%
+    count()%>%
+    rename(deaths=n)
 ```
 
 
@@ -69,6 +117,15 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
+winter <- c("January, February", "March")
+spring <- c("April", "June", "July")
+summer <- c("July", "August", "September")
+fall <- c("October", "November", "December")
+seasons <- c(winter, spring, summer, fall)
+
+season_death <- gun_deaths%>%
+    mutate 
+    
 
 ```
 
@@ -78,11 +135,30 @@ Assume that:
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 ```{r race}
+suicide_or_homicide <- gun_deaths%>%
+    select(race, intent)%>%
+    filter(intent %in% c("Suicide", "Homicide"), race %in% c("White", "Black", "Hispanic"))%>%
+    group_by(race, intent)%>%
+    count()%>%
+    rename(deaths=n)
+
+suicide_or_homicide
 
 ```
 
 (hint maybe looking at percentages would be good)
 ```{r race_2}
+suicide_or_homicide <- gun_deaths%>%
+    select(race, intent)%>%
+    filter(intent %in% c("Suicide", "Homicide"), race %in% c("White", "Black", "Hispanic"))%>%
+    group_by(race, intent)%>%
+    count()%>%
+    rename(deaths=n)%>%
+    ungroup()%>%
+    group_by(race)%>%
+    mutate(percentage_of_race_death = deaths/sum(deaths)*100)
+
+suicide_or_homicide
 
 ```
 
@@ -90,10 +166,22 @@ Assume that:
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police}
+police_deaths <- gun_deaths%>%
+    mutate(age = as.numeric(age))%>%
+    select(police, age, race)%>%
+    group_by(race)%>%
+   
+
+ggplot(police_deaths, mapping=aes(x=factor(police), y=age))+
+    geom_boxplot()+
+    labs(x = "Killed by Police?")
+
 
 ```
 
 Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
+
+##Unfortunately, I ran out of time to finish the rest of the assignment. I got stuck finding a way to adequately represent the police related deaths to race. My plan moving forward would have been to do some searching on how to do statists tests within R. I was also unable to group the data into months to complete the seasonal data analysis.
 
 ```{r stats?}
 
