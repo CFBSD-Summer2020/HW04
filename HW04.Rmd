@@ -269,7 +269,12 @@ gun_deaths_by_police %>%
 
 Finally, all together now:
 ```{r police_3 and age and race}
-
+gun_deaths_by_police %>%
+    ggplot(mapping = aes(x = age, y = per_deaths_race_police, color = race, 
+                         size = per_deaths_age_police)) + 
+    geom_point() + scale_color_brewer(palette = "Set2") + 
+    labs(x = "Age", y = "Police Involvement by Race (percent)", title = "Relationships between Age, Race, and Police Involvement with Gun Deaths\n                                                   (2012-2014)", 
+         size = "Police Involvement by Age (percent)", color = "Race")
 ```
 
 
