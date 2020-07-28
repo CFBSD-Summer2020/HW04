@@ -20,7 +20,8 @@ The gun_deaths.csv is provided in the repository.
 library(tidyverse)    # load tidyverse packages, including ggplot2
 
 # read in the data
-
+library(readr)
+gun_death <- read_csv('gun_deaths.csv')
 ```
 
 ## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
@@ -29,35 +30,90 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 
 ```{r month, warning=FALSE}
-
+library(knitr)
+monthly_death <- gun_death %>%
+    count(month) %>%
+    rename(deaths = n)
+knitr::kable(monthly_death, "markdown",
+             align = 'cc',
+             caption = "Gun deaths per month")
 ```
 
 
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
-
+library(ggplot2)
+ggplot(monthly_death, aes(x = factor(month), y = deaths - 6000)) +
+    geom_bar(stat = "identity") +
+    scale_x_discrete("Month",
+                     breaks = 1:12,
+                     labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) + 
+    scale_y_continuous(name = "Deaths",
+                       limits = c(0,3200),
+                       breaks = c(0, 1000, 2000, 3000),
+                       labels = c("6000", "7000", "8000", "9000"),
+                       expand = c(0,0)) +
+    geom_text(aes(label = deaths), vjust = -1) +
+    labs(title = "Gun deaths per month") +
+    theme(panel.background = element_blank(),
+          axis.line = element_line(),
+          plot.title = element_text(hjust = 0.5))
+    
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
-
+intent_type <- gun_death %>%
+    count(intent, sort = TRUE) %>%
+    rename(deaths = n)
+ggplot(intent_type, aes(x = reorder(intent, -deaths), y = deaths)) +
+    geom_bar(stat = "identity") +
+    scale_y_continuous("Deaths",
+                       expand = c(0,0), 
+                       limits = c(0,70000)) +
+    labs(title = "Number of each type of intent") +
+    xlab("Intent") +
+    geom_text(aes(label = deaths), vjust = -1) +
+    theme(panel.background = element_blank(),
+          axis.line = element_line(),
+          plot.title = element_text(hjust = 0.5))
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
-
+age_sex <- gun_death %>%
+    select(age, sex)
+age_sex = subset(age_sex, age != "Not Available")
+age_sex$age<-as.numeric(age_sex$age)
+average_age <- age_sex %>%
+    group_by(sex) %>%
+    summarize(ave_age = mean(age))
+average_age$ave_age<-as.integer(average_age$ave_age)
+ggplot(age_sex, aes(x = sex, y = age, color = sex, fill = sex)) +
+    geom_boxplot(alpha = 0.4) +
+    annotate(geom = "text", x = 2, y = 50, label = paste("Average age:", average_age[1,2])) +
+    scale_x_discrete("Sex",
+                     labels = c("F" = "Female", "M" = "Male")) +
+    labs(title = "Age of gun death victims") +
+    ylab("Age") +
+    ##geom_text(aes(label = deaths), vjust = -1) +
+    theme(panel.background = element_blank(),
+          axis.line = element_line(),
+          plot.title = element_text(hjust = 0.5),
+          legend.position = "none")
 ```
 
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
-
+white <- gun_death %>%
+    filter(sex == "M", race == "White", education != "Less than HS")
 ```
-
+Using these filters, the new data frame "white" contains 47039 observations in total, which is the number of white males with at least a high school education level that were killed by guns in 2012.
 
 ## Which season of the year has the most gun deaths?
 
@@ -69,42 +125,107 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
-
+seasonly_death <- gun_death %>%
+    mutate(season = (month - 1) %/% 3 + 1) %>% ##This aligns each month with its according season
+    count(season) %>%
+    rename(deaths = n)
+ggplot(seasonly_death, aes(x = factor(season), y = deaths)) +
+    geom_bar(stat = "identity") +
+    scale_x_discrete("Season",
+                     breaks = 1:4,
+                     labels = c("Winter", "Spring", "Summer", "Autumn")) +
+    scale_y_continuous("Deaths",
+                       limits = c(0, 30000),
+                       expand = c(0,0)) +
+    labs(title = "Number of deaths each season") +
+    geom_text(aes(label = deaths), vjust = -1) +
+    theme(panel.background = element_blank(),
+          axis.line = element_line(),
+          plot.title = element_text(hjust = 0.5))
 ```
-
+From the plot, we can easily identify summer as the season with the most gun deaths.
 
 # These are more open ended questions from here on out, you could look at making multiple summaries or types of plots. 
 
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 ```{r race}
+race_list <- c("White", "Black", "Hispanic")
+intent_list <- c("Suicide", "Homicide")
+race_death <- gun_death %>%
+    group_by(race) %>%
+    count(intent) %>%
+    rename(deaths = n) %>%
+    mutate(ratio = deaths / sum(deaths)) %>%
+    filter(race %in% race_list, intent %in% intent_list)
+```
 
+Use the exact number for a barplot
+
+```{r}
+ggplot(race_death, aes(x = race, y = deaths, color = intent, fill = intent)) +
+    geom_bar(stat = "identity",
+             position = "dodge") +
+    geom_text(aes(label = deaths), vjust = -1, color = "black", position = position_dodge(width = 0.9)) + ##Any good idea to align these two tags?
+    scale_y_continuous("Deaths",
+                       limits = c(0, 60000),
+                       expand = c(0,0)) +
+    xlab("Race") +
+    labs(title = "Death numbers of each intent in different races",
+         color = "Intent", fill  = "Intent") +
+    theme(panel.background = element_blank(),
+          axis.line = element_line(),
+          plot.title = element_text(hjust = 0.5))
+    
 ```
 
 (hint maybe looking at percentages would be good)
+Now use ratio to do another barplot
 ```{r race_2}
-
+ggplot(race_death, aes(x = race, y = ratio, color = intent, fill = intent)) +
+    geom_bar(stat = "identity",
+             position = "dodge") +
+    geom_text(aes(label = round(ratio, 2)), vjust = -1, color = "black", position = position_dodge(width = 0.9)) + ##Any good idea to align these two tags?
+    scale_y_continuous("Ratio",
+                       limits = c(0, 1),
+                       expand = c(0,0)) +
+    xlab("Race") +
+    labs(title = "Ratio of each intent in different races",
+         color = "Intent", fill  = "Intent") +
+    theme(panel.background = element_blank(),
+          axis.line = element_line(),
+          plot.title = element_text(hjust = 0.5))
 ```
-
+From the two barplots above, it seems that whites who are killed by guns more likely to die because of suicide, but the situation is just the opposite for blacks and hispanics.
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police}
+police_death <- gun_death %>%
+    select(police, age, race) %>%
+    arrange(police) %>%
+    filter(age != "Not Available")
+police_death$age <- as.numeric(police_death$age)
 
+    
 ```
 
 Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
 
 ```{r stats?}
-
-
+police_sum1 <- police_death %>%
+    count(police)
+notinv_length <- police_sum1$n[1]
+notinv <- as.integer(police_death$age[1:notinv_length])
+inv <- as.integer(police_death$age[notinv_length+1:length(police_death$age)])
+t.test(x = notinv, y = inv, paired = FALSE)
 ```
-
+Therefore, there is a statistically significant differenct in age of deaths considering the involvement of police.
 
 ```{r police_2}
 
 ```
-
+I'm not pretty sure how to analyze the interaction of the three variables...
 ```{r stats_2?}
 
 
@@ -113,7 +234,20 @@ Think about performing stats such as a t.test to see if differences you are plot
 
 Finally, all together now:
 ```{r police_3}
-
+ggplot(police_death, aes(x = factor(police), y = age, color = race, fill = race)) +
+    geom_bar(stat = "identity",
+             position = "dodge") +
+    scale_x_discrete("Police Involvement",
+                     breaks = c(0, 1),
+                     labels = c("Not involved", "Involved")) +
+    scale_y_continuous("Age",
+                       limits = c(0, 110),
+                       expand = c(0,0)) +
+    labs(title = "Police-involved gun deaths",
+         color = "Race", fill = "Race") +
+    theme(panel.background = element_blank(),
+          axis.line = element_line(),
+          plot.title = element_text(hjust = 0.5))
 ```
 
 
