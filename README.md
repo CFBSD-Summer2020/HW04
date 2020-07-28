@@ -1,4 +1,7 @@
 # HW04
+For this homework, I explored the population demographics in the midwest dataset. There should be an Rscript in this directory called "Data_Exploration.R" with my annotated code. Thanks for stopping by!
+
+
 Due Monday July 27th
 
 ### Option 1
