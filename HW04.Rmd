@@ -99,8 +99,12 @@ gun_deaths_by_age_sex <- gun_deaths %>%
 #Boxplot of age vs sex
 gun_deaths_by_age_sex %>% 
     ggplot(mapping = aes(x = sex, y = age, color = sex)) +
-    geom_boxplot() +
-    xlab("Sex of Victims") + ylab("Age of Victims") + ggtitle("Sex and Age of Gun Death Victims in America (2012-2014)")
+    geom_boxplot(fill = NA, outlier.shape = NA, width = 0.595) + 
+    geom_point(size = 0, position = position_jitter(width = 0.3), alpha = 0.1) +
+    scale_color_brewer(palette = "Set2") +
+    xlab("Sex of Victims") + ylab("Age of Victims") +
+    ggtitle("Sex and Age of Gun Death Victims in America (2012-2014)")
+    
 
 gun_deaths_by_age_sex[2,2:3]
 ```
@@ -130,7 +134,35 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
+#Adds season column to gun_deaths_by_month using cut() function
+gun_deaths_by_month$season <- cut(gun_deaths_by_month$month, c(0,3.5,6.5,9.5,13), 
+                                  c("Winter", "Spring", "Summer", "Fall"))
 
+#Adds deaths per season and year
+gun_deaths_by_month <- gun_deaths_by_month %>% 
+    group_by(season, year) %>%
+    mutate(deaths_season = sum(deaths_month)) %>%
+    mutate(avg_deaths_season = mean(deaths_season)) %>% 
+    ungroup()
+ 
+#Produce table to look at values   
+gun_deaths_by_month %>%
+    select(year, season, deaths_season) %>%
+    distinct() %>%
+    arrange(year)
+
+#Generates barplot of deaths
+gun_deaths_by_month %>%
+    arrange(desc(year)) %>%
+    distinct() %>% 
+    ggplot(mapping = aes(x = season, y = deaths_month, fill = as.character(year))) +
+    geom_bar(stat = "identity", alpha = 0.7) + 
+    scale_y_continuous(limits = c(0,29000)) +
+    scale_fill_brewer(palette = "Set2") +
+    xlab("Season") + ylab("Gun Death Victims") +
+    ggtitle("Season and Year of Gun Deaths in America (2012-2014)") +
+    theme(legend.title = element_blank(), legend.position = c(0.5, 0.93),
+          legend.background = element_blank(), legend.direction = "horizontal")
 ```
 
 
