@@ -1,3 +1,3 @@
 # HW04
 
-The easiest way to look through  this assignment is to fork it and knit it.
+The assignment is called "Wing_size_HW04.Rmd". The easiest way to look through  is to fork it and knit it.
