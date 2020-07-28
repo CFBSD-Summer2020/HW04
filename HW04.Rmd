@@ -209,27 +209,29 @@ gun_police_age_race <- subset(gun_police_age_race, age != "Not Available")
 #police involvement and age
 gun_police_age <- gun_police_age_race[,c("police", "age")]
 gun_police_age_1 <- subset(gun_police_age, police == 1)
-#mean age with police involvement
+#mean age that has police involvement
 mean(as.numeric(gun_police_age_1[,"age"]))
 
 gun_police_age_0 <- subset(gun_police_age, police == 0)
-#mean age without police involvement
+#mean age that doesn't have police involvement
 mean(as.numeric(gun_police_age_0[,"age"]))
+#then with these two means, will perform a T test to see, whether age sigificantly affects police involvement
 
 
 
 #police involvement and race
 gun_police_race <- gun_police_age_race[,c("police", "race")]
 gun_police_race <- as.data.frame(table(gun_police_race))
-#get percentage of police involvement for each race can solve the problem
+#get percentage of police involvement for each race can solve the problem: 
+#when race is black, what's the percentage it has police involvement
 
-which(gun_police_race$race == "Asian/Pacific Islander")
-which(gun_police_race$race == "Black")
-which(gun_police_race$race == "Hispanic")
-which(gun_police_race$race == "Not Availabletive American/Not Availabletive Alaskan")
-which(gun_police_race$race == "White")
+percent_inv_black <- 356/(22937+356)
+percent_inv_white <- 709/(65515+709)
+percent_inv_asian <- 30/(1296+30)
+percent_inv_hispanic <- 282/(8739+282)
+percent_inv_NA <- 25/(891+25)
 
-
+# now can perform a one way ANOVA test for the percentages
 
 ```
 
