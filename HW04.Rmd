@@ -29,20 +29,27 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 ```{r month, warning=FALSE}
 library(knitr) #load knitr, required for kable()
-kable(gun_deaths, format = "markdown")
+
+gun_deaths_by_month <- gun_deaths %>%
+    select(month, year) %>%
+    group_by(month) %>% #Orders table by month
+    count(year, name = "deaths_month") %>% #Enumerates gun deaths
+    mutate(abMonth = month.abb[month], sd = sd(deaths_month)) %>% #Adds column of abbreviated month name and standard error
+    ungroup()
+
+#Creates table with year, month and deaths
+gun_deaths_by_month %>%
+    select(year, abMonth, deaths_month) %>%
+    arrange(year) %>%
+    rename("Year |" = "year", "Month |" = "abMonth", "American Gun Deaths" = "deaths_month") %>%
+    kable(format = "markdown")
 ```
 
 
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
-gun_deaths_by_month <- gun_deaths %>%
-    group_by(month) %>% #Orders table by month
-    count(year, name = "deaths_month") %>% #Enumerates gun deaths
-    mutate(abMonth = month.abb[month], sd = sd(deaths_month)) %>% #Adds column of abbreviated month name and standard error
-    ungroup()
-
-#Makes abbreviated months leveled factors
+#Makes abbreviated months leveled factors for proper display via ggplot
 gun_deaths_by_month$abMonth <- factor(gun_deaths_by_month$abMonth, 
                                       levels = c(month.abb[12:1]))
 #Plots data of deaths by month
@@ -79,13 +86,36 @@ ggplot(mapping = aes(x = reorder(intent, -deaths_intent), y = deaths_intent)) +
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
+#Selects age and sex variables from gun_deaths
+gun_deaths_by_age_sex <- gun_deaths %>%
+    select(age, sex) %>%
+    filter(age != "Not Available") %>% 
+    transform(age = as.numeric(age)) %>% 
+    group_by(sex) %>%
+    mutate(mean_age = mean(as.numeric(age))) %>%
+    add_count(sex, name = "deaths_sex") %>%
+    ungroup()
 
+#Boxplot of age vs sex
+gun_deaths_by_age_sex %>% 
+    ggplot(mapping = aes(x = sex, y = age, color = sex)) +
+    geom_boxplot() +
+    xlab("Sex of Victims") + ylab("Age of Victims") + ggtitle("Sex and Age of Gun Death Victims in America (2012-2014)")
+
+gun_deaths_by_age_sex[2,2:3]
 ```
 
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
+#Enumerating number of deaths of white males with at least a high school education in 2012
+gun_deaths %>%
+    select(year, sex, race, education) %>% 
+    filter(sex == "M", year == 2012, education != "Less than HS", race == "White") %>% 
+    count(education, name = "white male American gun victims in 2012") %>%
+    bind_rows(summarise_all(., funs(if(is.numeric(.)) sum(.) else "Total"))) %>% #Adds row for Total number of deaths
+    kable(format = "markdown")
 
 ```
 
