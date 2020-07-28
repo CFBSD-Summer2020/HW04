@@ -20,6 +20,8 @@ The gun_deaths.csv is provided in the repository.
 library(tidyverse)    # load tidyverse packages, including ggplot2
 
 # read in the data
+gun <- read.csv("gun_deaths.csv", header = TRUE, stringsAsFactors = FALSE)
+head(gun)
 
 ```
 
@@ -29,6 +31,19 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 
 ```{r month, warning=FALSE}
+library(knitr)
+#year <- gun$year
+#month <- gun$month
+#year_month <- paste(year,month,sep="/")
+#year_month <- table(year_month) 
+#year_month <- as.data.frame(year_month)
+#colnames(year_month) <- c("Year_month", "Gun_Death")
+#kable(year_month, format = "markdown")
+
+month_gun <- table(gun$month)
+month_gun <- as.data.frame(month_gun)
+colnames(month_gun) <- c("month","gun_death")
+kable(month_gun, format = "markdown")
 
 ```
 
@@ -36,6 +51,17 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
+month_gun$month <- month.name
+#need to make month an ordered factor, so ggplot doesn't do it alphabaticially
+#Factors are used to represent categorical data. Factors can be ordered or unordered and are an important class for statistical analysis and for plotting.
+month_gun$month <- factor(month_gun$month, levels = month_gun$month)
+
+ggplot(month_gun)+
+    geom_bar(aes(x = month, y = gun_death, fill = month), stat = "identity")+
+    labs(x = "Month", y = "Gun death per month", title = "Gun death per month")+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"), 
+        legend.position = "none")
 
 ```
 
@@ -43,11 +69,39 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 ```{r intent}
 
+gun_intent <- gun$intent
+gun_intent <- as.data.frame(table(gun_intent))
+colnames(gun_intent) <- c("intent","death")
+
+ggplot(gun_intent)+
+    geom_bar(aes(x = intent,  y = death, fill = intent), stat = "identity")+
+    labs(x = "Intent", y = "Gun death", title = "Gun death for each intent")+
+    theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+        panel.background = element_blank(), axis.line = element_line(colour = "black"), 
+        legend.position = "none")
+
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
+
+gun_age_sex <- gun[,5:6]
+#gun_age_sex <- as.data.frame(table(gun_age_sex))
+#colnames(gun_age_sex) <- c("sex", "age", "death")
+
+#remove the not available line
+gun_age_sex <- subset(gun_age_sex, age != "Not Available")
+#gun_age_sex <- subset(gun_age_sex, death != 0)
+gun_age_sex$age <- as.numeric(gun_age_sex$age)
+
+#draw the plot
+ggplot(gun_age_sex)+
+    geom_boxplot(aes(x = sex, y = age, fill = sex))
+
+#calculate average female age
+gun_age_F <- subset(gun_age_sex, sex == "F")
+mean(gun_age_F$age)
 
 ```
 
@@ -55,6 +109,13 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
+
+gun_white_2012 <- subset(gun, race == "White" & year == "2012")
+gun_white_2012 <- subset(gun_white_2012, education != "Not Available" & education != "Less than HS")
+#check to make sure all less HS are filtered out
+table(gun_white_2012$education)
+#print out number of white males with at least a high school education were killed by guns in 2012
+nrow(gun_white_2012)
 
 ```
 
@@ -69,6 +130,23 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
+gun$month[gun$month == "1"] <- "Winter"
+gun$month[gun$month == "2"] <- "Winter"
+gun$month[gun$month == "3"] <- "Winter"
+gun$month[gun$month == "4"] <- "Spring"
+gun$month[gun$month == "5"] <- "Spring"
+gun$month[gun$month == "6"] <- "Spring"
+gun$month[gun$month == "7"] <- "Summer"
+gun$month[gun$month == "8"] <- "Summer"
+gun$month[gun$month == "9"] <- "Summer"
+gun$month[gun$month == "10"] <- "Fall"
+gun$month[gun$month == "11"] <- "Fall"
+gun$month[gun$month == "12"] <- "Fall"
+#is there faster way to do this?, instead of type out all of them?
+
+summary <- as.data.frame(table(gun$month))
+season_order <- order(summary$Freq, decreasing=TRUE)
+gun$month[season_order[1]]
 
 ```
 
@@ -78,6 +156,40 @@ Assume that:
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 ```{r race}
+#for white
+white_gun <- subset(gun, race == "White")
+white_gun <- white_gun["intent"]
+white_gun <- as.data.frame(table(white_gun))
+colnames(white_gun) <- c("intent", "death")
+
+suicide <- which(white_gun$intent == "Suicide")
+homicide <- which(white_gun$intent == "Homicide")
+
+white_gun[suicide, 2] > white_gun[homicide, 2]
+
+
+#for black
+black_gun <- subset(gun, race == "Black")
+black_gun <- black_gun["intent"]
+black_gun <- as.data.frame(table(black_gun))
+colnames(black_gun) <- c("intent", "death")
+
+suicide <- which(black_gun$intent == "Suicide")
+homicide <- which(black_gun$intent == "Homicide")
+
+black_gun[suicide, 2] > black_gun[homicide, 2]
+
+
+#for hispanics
+hispanic_gun <- subset(gun, race == "Hispanic")
+hispanic_gun <- hispanic_gun["intent"]
+hispanic_gun <- as.data.frame(table(hispanic_gun))
+colnames(hispanic_gun) <- c("intent", "death")
+
+suicide <- which(hispanic_gun$intent == "Suicide")
+homicide <- which(hispanic_gun$intent == "Homicide")
+
+hispanic_gun[suicide, 2] > hispanic_gun[homicide, 2]
 
 ```
 
@@ -90,6 +202,36 @@ Assume that:
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police}
+gun_police_age_race <- gun[,c("police", "race", "age")]
+gun_police_age_race <- subset(gun_police_age_race, age != "Not Available")
+
+
+#police involvement and age
+gun_police_age <- gun_police_age_race[,c("police", "age")]
+gun_police_age_1 <- subset(gun_police_age, police == 1)
+#mean age that has police involvement
+mean(as.numeric(gun_police_age_1[,"age"]))
+
+gun_police_age_0 <- subset(gun_police_age, police == 0)
+#mean age that doesn't have police involvement
+mean(as.numeric(gun_police_age_0[,"age"]))
+#then with these two means, will perform a T test to see, whether age sigificantly affects police involvement
+
+
+
+#police involvement and race
+gun_police_race <- gun_police_age_race[,c("police", "race")]
+gun_police_race <- as.data.frame(table(gun_police_race))
+#get percentage of police involvement for each race can solve the problem: 
+#when race is black, what's the percentage it has police involvement
+
+percent_inv_black <- 356/(22937+356)
+percent_inv_white <- 709/(65515+709)
+percent_inv_asian <- 30/(1296+30)
+percent_inv_hispanic <- 282/(8739+282)
+percent_inv_NA <- 25/(891+25)
+
+# now can perform a one way ANOVA test for the percentages
 
 ```
 
