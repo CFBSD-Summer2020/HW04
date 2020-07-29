@@ -1,5 +1,6 @@
 ---
 title: "Exploring Gun Deaths in America"
+author: "Nicholas Elliott"
 output: github_document
 ---
 
@@ -18,9 +19,10 @@ output: github_document
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
-
+library(knitr)
 # read in the data
-
+gun_deaths <- read_csv("gun_deaths.csv", col_types = "dccdcdcdcc")
+head(gun_deaths)
 ```
 
 ## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
@@ -29,6 +31,13 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 
 ```{r month, warning=FALSE}
+deathsPermonth <- gun_deaths %>%
+    group_by(month) %>%
+    count(month, name = "deaths")
+
+deathsPermonth_df <- data.frame(deathsPermonth)
+
+kable(deathsPermonth_df, "markdown")
 
 ```
 
@@ -37,11 +46,25 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 ```{r month_chart}
 
+deathsPermonth_df %>%
+ggplot(aes(x = reorder(month, + deaths), y = deaths)) +
+    geom_bar(stat = "identity", color = "black", fill = "blue") +
+    scale_x_discrete(labels = c("Jan", "Oct", "Nov", "Dec", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep")) +
+    xlab("month")
+
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
+
+gun_deaths %>%
+    group_by(intent) %>%
+    count(intent, name = "n") %>%
+ggplot(aes(x = reorder(intent, - n), y = n)) +
+    geom_bar(stat = "identity", color = "black", fill = "green") +
+    ylab("deaths") +
+    xlab("intent")
 
 ```
 
@@ -49,12 +72,35 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 ```{r age_&_sex}
 
+gun_deaths %>%
+    group_by(age, sex) %>%
+ggplot(aes(sex, age, fill = sex)) +
+    geom_boxplot()
+
+avg_age <- gun_deaths %>%
+    group_by(age, sex) %>%
+    filter(sex == "F") %>%
+    count(age, name = "age_count")
+    
+avg_age_df <- data.frame(avg_age)
+avg_age_df
+apply(avg_age_df, 2, mean)
+#I'm totally stumped on this one.
 ```
 
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
+
+white_M_gunDeaths <- gun_deaths %>%
+    select(year, sex, race, education) %>%
+    filter(year == 2012, sex == "M", race == "White", 
+           education %in% c("BA+", "HS/GED", "Some college")) %>%
+    count(education, name = "deaths") %>%
+    summarize(HS_educated_white_males_killed_2012 = sum(deaths))
+
+kable(white_M_gunDeaths, "markdown")
 
 ```
 
@@ -69,6 +115,36 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
+#Most deaths are in Summer. Is there a quicker way to do this? Seems like a lot for a little.
+
+Winter <- gun_deaths %>%
+    filter(month %in% c("1", "2", "3")) %>%
+    count(month, name = "winter_deaths") %>%
+    summarize(Deaths = sum(winter_deaths))
+
+Spring <- gun_deaths %>%
+    filter(month %in% c("4", "5", "6")) %>%
+    count(month, name = "spring_deaths") %>%
+    summarize(Deaths = sum(spring_deaths))
+
+Summer <- gun_deaths %>%
+    filter(month %in% c("7", "8", "9")) %>%
+    count(month, name = "summer_deaths") %>%
+    summarize(Deaths = sum(summer_deaths))
+
+Fall <- gun_deaths %>%
+    filter(month %in% c("10", "11", "12")) %>%
+    count(month, name = "fall_deaths") %>%
+    summarize(Deaths = sum(fall_deaths))
+
+Winter_df <- data.frame(Winter, row.names = "Winter")
+Spring_df <- data.frame(Spring, row.names = "Spring")
+Summer_df <- data.frame(Summer, row.names = "Summer")
+Fall_df <- data.frame(Fall, row.names = "Fall")
+
+Seasons <- rbind(Winter_df, Spring_df, Summer_df, Fall_df)
+
+kable(Seasons, "markdown")
 
 ```
 
@@ -79,10 +155,29 @@ Assume that:
 
 ```{r race}
 
+intent_deaths <- gun_deaths %>%
+    group_by(race, intent) %>%
+    filter(intent %in% c("Homicide", "Suicide"), race %in% c("White", "Black", "Hispanic")) %>%
+    count(intent, name  = "H_S_Deaths")
+
+ggplot(intent_deaths, aes(x = race, y = H_S_Deaths, fill = intent)) +
+    geom_col(position = "dodge") +
+    ylab("Gun Deaths") +
+    xlab(element_blank())
+
 ```
 
 (hint maybe looking at percentages would be good)
 ```{r race_2}
+intent_deaths <- gun_deaths %>%
+    group_by(race, intent) %>%
+    filter(intent %in% c("Homicide", "Suicide"), race %in% c("White", "Black", "Hispanic")) %>%
+    count(intent, name  = "H_S_Deaths") %>%
+#I know I need to build on this, but really not sure how.
+
+
+    
+
 
 ```
 
