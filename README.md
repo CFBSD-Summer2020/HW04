@@ -6,3 +6,6 @@ Explore a dataset. That's right, like last week find some data online or use you
 
 ### Option 2
 I'm also providing a more traditional HW assignment, similar to HW02 this week if you are just wanting to have a more traditional assignment. It uses data from FiveThirtyEight to explore gun deaths from 2012-2014. [See the HW04.Rmd file for details.](HW04.Rmd)
+
+
+I selected Option 2. [See the HW04.Rmd file for the assignment.](HW04.Rmd) I didn't manage to complete all of the tasks. I would definitely appreciate hints/suggestions on how to complete them.
