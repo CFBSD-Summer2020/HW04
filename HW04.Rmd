@@ -85,7 +85,7 @@ avg_age <- gun_deaths %>%
 avg_age_df <- data.frame(avg_age)
 avg_age_df
 apply(avg_age_df, 2, mean)
-    
+#I'm totally stumped on this one.
 ```
 
 
@@ -173,6 +173,7 @@ intent_deaths <- gun_deaths %>%
     group_by(race, intent) %>%
     filter(intent %in% c("Homicide", "Suicide"), race %in% c("White", "Black", "Hispanic")) %>%
     count(intent, name  = "H_S_Deaths") %>%
+#I know I need to build on this, but really not sure how.
 
 
     
