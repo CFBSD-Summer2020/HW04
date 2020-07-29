@@ -18,46 +18,105 @@ output: github_document
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
+library(dplyr)
+library(magrittr)
+library(knitr)
 
 # read in the data
+gun_death<- read_csv("gun_deaths.csv")
 
+```
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE, error = TRUE)
+
+#glimps
+glimpse(gun_death)
 ```
 
 ## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
 
 Knitr is part of the knitr package. Allows you to change column names and add captions and make pretty tables in your knitted document. Hint: set the argument format = "markdown"
 
-
 ```{r month, warning=FALSE}
+month_death<- gun_death %>%
+    group_by(month) %>%
+    count(month)
 
+kable(month_death, format="markdown", row.names= NA, col.names= c("Month", "Number of Deaths"), caption= "Monthly gun-related deaths in 2012, data retrieved from https://github.com/fivethirtyeight/guns-data")
 ```
-
 
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
+#change variable month to contain abbs of months
+gun_death$month <- factor(gun_death$month, labels= c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
 
+#create a data frame that has the count of death for each month 
+monthly_death<- gun_death %>%
+    group_by(month) %>%
+    count()
+
+#plot   
+ggplot(monthly_death, aes(x=month, y=n))+
+    geom_bar(stat="identity", fill="red", alpha=0.7)+
+    scale_y_continuous(limit=c(0,12000))+
+    labs(title="Montly Gun Deaths in 2012", x=element_blank(), y="Number of deaths")+
+    theme_bw()
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
+#create a data frame with death number associated with intent type
+gun_death_intent<- gun_death %>%
+    group_by(intent) %>%
+    count() 
 
+#A way to level the intent variable in order to order the bins, not the best way if there are more variables
+gun_death_intent$intent<- factor(gun_death_intent$intent, 
+                                 levels=c("Suicide", "Homicide", "Accidental", "Undetermined", "Not Available"))     
+
+#plot
+ggplot(gun_death_intent, aes(x=intent, y=n, fill=intent))+
+    geom_bar(stat="identity", alpha=0.9)+
+    scale_y_continuous(limit=c(0,64000))+
+    labs(title="Number of Gun Deaths by Different Intentions in 2012", x=element_blank(), y="Number of deaths", fill="Reported Intentions")+
+    theme_bw()
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
+##make age variable numeric
+gun_death$age<- as.numeric(gun_death$age)
 
+#mean of female victims
+female_age<- gun_death %>%
+    select(age, sex) %>%
+    filter(sex=="F") 
+
+avg<- mean(female_age$age, na.rm=TRUE)  
+avg<- round(avg, digits=2)
+
+#plot
+ggplot(gun_death, aes(x=sex, y=age, fill=sex))+
+    geom_boxplot()+
+    annotate("text", x=1, y=70, label=paste("The average age\n of female victim is", avg))+
+    labs(title="Ages of Gun Violence Victims in 2012, By Gender", x=element_blank(), y="Age", fill="Gender")+
+    theme_bw()
 ```
-
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
+-The answer is 46227 
+
 ```{r education}
-
+answer<- gun_death %>%
+    select(education, race, sex) %>%
+    filter(education %in% c("HS/GED", "Some college", "BA+"), race== "White", sex=="M") %>%
+    count()
+answer
 ```
-
 
 ## Which season of the year has the most gun deaths?
 
@@ -68,54 +127,142 @@ Assume that:
 * Summer = July-September
 * Fall = October-December
 
+-Summer has the most gun deaths.
+
 ```{r season}
+#calculate death count in each season
+winter<- gun_death %>%
+    select(month) %>%
+    filter(month %in% c("Jan", "Feb", "Mar")) %>%
+    count() 
+
+spring<- gun_death %>%
+    select(month) %>%
+    filter(month %in% c("Apr", "May", "Jun")) %>%
+    count() 
+
+summer<- gun_death %>%
+    select(month) %>%
+    filter(month %in% c("Jul", "Aug", "Sep")) %>%
+    count() 
+
+fall<- gun_death %>%
+    select(month) %>%
+    filter(month %in% c("Oct", "Nov", "Dec")) %>%
+    count() 
+
+max(winter, spring, summer, fall)
 
 ```
-
-
 # These are more open ended questions from here on out, you could look at making multiple summaries or types of plots. 
 
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 ```{r race}
+#data frame of gun deaths intent 
+gun_death_race3<- gun_death %>%
+    filter(race %in% c("White", "Black", "Hispanic"), intent %in% c("Suicide", "Homicide")) 
 
+#order race
+gun_death_race3$race<- factor(gun_death_race3$race, 
+                                 levels=c("White", "Black", "Hispanic")) 
+
+#plot
+ggplot(gun_death_race3, aes(x=race, fill=intent))+
+    geom_bar(position="stack", alpha=0.9)+
+    labs(title="Gun Death Intentions Comparisons Among Three Populations", x="Race", y="Number of deaths", fill="Reported Intentions")+
+    theme_bw()
 ```
 
 (hint maybe looking at percentages would be good)
 ```{r race_2}
 
-```
+#add a percent column summarizing the info
+gun_death_percent<- gun_death_race3 %>%
+    group_by(race, intent) %>%
+    count() %>%
+    rename(death=n) %>%
+    group_by(race) %>%
+    mutate(total=sum(death), percent=death/total*100)
 
+#plot
+ggplot(gun_death_percent, aes(x=race, y=percent, fill=intent))+
+    geom_bar(stat="identity", position="stack", alpha=0.9)+
+    labs(title="Proportions of Reported Intentions of Gun Deaths Among Three Populations", x="Race", y="Percentage(%)", fill="Reported Intentions")+
+    theme_bw()
+```
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police}
+#data frame
+gun_death_police<- gun_death %>%
+    select(sex, age, police) 
 
+#make police variable factor
+gun_death_police$police<- factor(gun_death_police$police)
+
+#Are police-involved gun deaths significantly different from other gun deaths?
+gun_death_police %>%
+    group_by(police) %>%
+    count()
+#plot
+ggplot(gun_death_police, aes(x=police))+
+    geom_bar(fill="blue", alpha=0.7)+
+    labs(title="The Majority of Gun Deaths in 2012 Did Not Involve A Police", x="Police Involvement\n(No=0, Yes=1)", y="Number of deaths")+
+    theme_bw()
 ```
 
-Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
+## Comparing the mean ages of gun death victims with or without police involvement, which is younger?
 
-```{r stats?}
+- A t test comparing the means of age among gun deaths w/o police involvement shows that there is a statistically significant difference the age means. 
+- A boxplot below to visualize that the average age of the vicimts of police-involved gun deaths is younger. 
 
+```{r police_&_age}
+#make age variable numeric
+gun_death_police$age<- as.numeric(gun_death_police$age)
 
+#t test
+t.test(gun_death_police$age ~ gun_death_police$police)
+
+#plot
+ggplot(gun_death_police, aes(x=police, y=age, fill=police))+
+    geom_boxplot(alpha=0.9)+
+    labs(title="Age Differences of Gun Deaths w/o Police Involvement", x="Police Involvement\n(No=0, Yes=1)", y="Age")+
+    theme_bw()
 ```
 
+## Are victims of police-involved gun death more likely to be male or female?
+
+- The visualization shows a greater proportion of police-involved victims are male compared to gun death that did not invovle a police. 
+- A Chi-square test shows statistical sigficance of this comparison.
+
+```{r police_&_sex}
+police_sex_percent<- gun_death_police %>%
+    group_by(sex, police) %>%
+    count() %>%
+    group_by(sex) %>%
+    mutate(total=sum(n), percent=n/total)
+
+ggplot(police_sex_percent, aes(x=police, y=percent, fill=sex))+
+    geom_bar(stat="identity", position="fill", alpha=0.7)+
+    labs(title="Police Involvement in Gun Deaths By Sex", x="Police Involvement\n(No=0, Yes=1)", y="Percent(%)")+
+    theme_bw()
+```
 
 ```{r police_2}
+chisq.test(gun_death_police$police, gun_death_police$sex, correct=FALSE)
 
 ```
 
-```{r stats_2?}
+## Age, gender, and police involvement of gun deaths in 2012
 
-
-```
-
-
-Finally, all together now:
 ```{r police_3}
-
+ggplot(gun_death_police, aes(x=police, y=age, fill=sex))+
+    geom_boxplot(alpha=0.9)+
+    labs(title="Age Differences of Gun Deaths w/o Police Involvement By Gender", x="Police Involvement\n(No=0, Yes=1)", y="Age")+
+    theme_bw()
 ```
-
 
 ## Session info
 
