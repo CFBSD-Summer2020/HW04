@@ -1,0 +1,115 @@
+---
+title: "HW 4"
+author: "Maria Evers"
+date: "7/29/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+```{r}
+##HW option 1: Explore a dataset. That's right, like last week find some data online or use your own data and manipulate it and explore it to create some data summaries. You can look at that homework for a list of datasets. Make use of the major dplyr functions select(), mutate(), arrange(), group_by(), summarize(), count() or baseR equivalents (there isn't a good baseR equivalent for many of these functions though). If you are using a Rmd, think about making your table summaries and printing them nicely with knitr::kable() and still think about plotting some data.
+
+```{r}
+
+# Load packages
+
+library(readxl)
+library(ggplot2)
+library(magrittr)
+library(dplyr)
+
+#Loading in the dataset 
+
+RNASeqEMT <- read_excel("~/Documents/RNA seq analysis/Diff Exp Genes accumulated data.xlsx", 
+    sheet = "R data")
+
+
+#I want to make a plot showing only genes that are significantly upregulated by both ATP and TGF-Beta at either 2 or 6 hours. 
+
+#Finding genes upregulated by either ATP or TGFB at 2 hours or 6 hours and selecting this data from original dataset:
+
+ATPsigRNASeqEMT <- RNASeqEMT %>%
+  filter(Treatment_type == "ATP", Significant == "Yes") %>%
+ distinct(Gene_name)
+  
+TGFBsigRNASeqEMT <- RNASeqEMT %>%
+  filter(Treatment_type == "TGFB", Significant == "Yes") %>%
+  distinct(Gene_name)
+
+ATPandTGFB <- rbind(ATPsigRNASeqEMT, TGFBsigRNASeqEMT)
+  
+ATPandTGFBduplicates <-duplicated(ATPandTGFB$Gene_name)
+
+print(ATPandTGFBduplicates) 
+
+Commongenes <- ATPandTGFB %>%
+  slice(10, 11, 25, 30, 31, 32, 37) 
+
+MMP10 <- RNASeqEMT %>%
+  filter(Gene_name == "MMP10")
+
+BMP2 <- RNASeqEMT %>%
+  filter(Gene_name == "BMP2")
+
+NFKB1 <- RNASeqEMT %>%
+  filter(Gene_name == "NFKB1")
+
+MMP1 <- RNASeqEMT %>%
+  filter(Gene_name == "MMP1")
+
+MMP3 <- RNASeqEMT %>%
+  filter(Gene_name == "MMP3")
+
+IL6 <- RNASeqEMT %>%
+  filter(Gene_name == "IL6")
+
+HGF <- RNASeqEMT %>%
+  filter(Gene_name == "HGF")
+
+Final_data <- rbind(MMP10, BMP2, NFKB1, MMP1, MMP3, IL6, HGF)
+
+
+#Now, Plot the data:
+
+ggplot(Final_data, aes(Gene_name, log2FC, color = Treatment, fill = Treatment)) + 
+  
+  geom_bar(aes(x = Treatment), stat = 'identity') +
+  
+  facet_wrap(~ Gene_name) +
+  
+  labs(title = "ATP and TGF-B treatment alter the transcription of several EMT \n or mesenchymal-type genes", x = element_blank(), y = "log2(FC) values") +
+  
+  scale_color_brewer(palette = "Paired") +
+  
+  scale_fill_brewer(palette = "Paired") +
+  
+  theme_bw() +
+  
+  theme(plot.title = element_text(hjust = 0.5, size = 14), axis.text = element_text(size = 8, color = "black"), axis.title = element_text(size = 14), axis.text.x = element_blank(), axis.ticks.x = element_blank()) 
+
+```
+```
+
