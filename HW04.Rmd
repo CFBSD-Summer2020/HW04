@@ -18,8 +18,12 @@ output: github_document
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
+library(magrittr)    # For pipe sign
+library(knitr)    # To pretty print tables
+library(ggpubr)    # For p-value bars
 
 # read in the data
+gun_deaths = read.csv("gun_deaths.csv")
 
 ```
 
@@ -29,6 +33,9 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 
 ```{r month, warning=FALSE}
+deaths_per_month = gun_deaths %>%
+    count(month)
+kable(deaths_per_month, format = "markdown")
 
 ```
 
@@ -36,27 +43,63 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
+month_labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun",
+               "Jul", "Aug", "Sept", "Oct", "Nov", "Dec")
+deaths_per_month %>%
+    mutate(month_lab = month_labels[month]) %>%
+    ggplot(aes(x = reorder(month_lab, month), y = n)) +
+    geom_bar(stat = "identity")    # 'identity' means you've already done the summarization
+    #scale_x_continuous(breaks = 1:12, labels = month_labels)
+
+# The easier way do to exactly the same thing:
+# Set 'month' as x aesthetics, and add the last commented line
+# However, it is fun to achieve this by mutating the original tibble
 
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
+deaths_by_intent = gun_deaths %>%
+    count(intent)
+deaths_by_intent %>%    # Not sure why cannot pipe here
+    ggplot(aes(x = reorder(intent, -n), y = n)) +    # -n means descending sort by n
+    geom_bar(stat = "identity")
 
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
-```{r age_&_sex}
+```{r age_&_sex, warning=FALSE}
+gun_deaths_num_age = gun_deaths %>%
+    # avoid unexpected behavoir when directly converting factors to numerics
+    mutate(num_age = as.numeric(as.character(age))) %>%
+    # also rm NA
+    filter(is.na(num_age) == FALSE)
+gun_deaths_num_age %>%
+    ggplot(aes(x = sex, y = num_age)) +
+    geom_boxplot()
+gun_deaths_num_age %>%
+    filter(sex == "F") %>%
+    summarize(ave_age = mean(num_age)) %>%
+    print()
 
 ```
+Above is the average age of female gun death victims
 
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
+gun_deaths %>%
+    filter(race == "White", sex == "M",
+           education %in% c("BA+", "HS/GED", "Some college"),
+           year == 2012) %>%
+    count() %>%
+    print()
 
 ```
+Above is the number of white... in 2012 got killed
 
 
 ## Which season of the year has the most gun deaths?
@@ -69,8 +112,16 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
-
+season_labs = c("Winter", "Spring", "Summer", "Fall")
+gun_deaths %>%
+    mutate(season = season_labs[as.integer((month - 1) / 3) + 1]) %>%
+    count(season) %>%
+    arrange(desc(season)) %>%
+    top_n(1, season) %>%
+    print()
+    
 ```
+Above is the season with the most gun deaths.
 
 
 # These are more open ended questions from here on out, you could look at making multiple summaries or types of plots. 
@@ -78,41 +129,109 @@ Assume that:
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 ```{r race}
+intent_count = gun_deaths %>%
+    filter(intent == "Homicide" | intent == "Suicide",
+           # In C/C++, one may want to use || and && for logic OR and AND.
+           # However in R, | is different from ||, that | can return a vector of Booleans. | is usually preferrred
+           race %in% c("White", "Hispanic", "Black")) %>%
+    group_by(race) %>%
+    count(intent) 
+intent_count %>%
+    ggplot(aes(x = race, y = n, fill = intent)) +
+    geom_bar(position = "dodge", stat = "identity")
 
 ```
 
 (hint maybe looking at percentages would be good)
 ```{r race_2}
+# Actually, I think the bar plot above is quite abvious
+intent_count %>%
+    # Notice it is still grouped by race
+    transmute(race, intent, intent_percent = n / sum(n) * 100) %>%
+    kable(format = "markdown")
 
 ```
+Above shows the percent of homi- / sui- cide among different racial groups.
 
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
-```{r police}
+```{r police vs age}
+# Age in involved/not involved groups
+gun_deaths_num_age %>%
+    ggplot(aes(x = as.factor(police), y = num_age)) +
+    geom_boxplot() +
+    scale_x_discrete(labels = c("not involved", "involved"), breaks = c(0, 1)) +
+    labs(title = "Age in police involved/not involved groups")
+```
 
+
+```{r police vs race, warning=FALSE}
+# Num of deaths in involved/not involved groups of different races
+gun_deaths_modified = gun_deaths_num_age %>%
+    mutate(police_lab = c("not involved", "involved")[police + 1]) %>%    # 0=not involved; 1=involved
+    mutate(race = ifelse(race == "Not Availabletive American/Not Availabletive Alaskan",
+                           "NA", as.character(race)))    # This one is too long for x-axis labels
+
+gun_deaths_modified %>%
+    group_by(police_lab, race) %>%
+    summarize(race_total = n()) %>%
+    # Still grouped by police
+    mutate(race_percent = race_total / sum(race_total) * 100) %>%
+    ggplot(aes(x = race, y = race_percent, fill = police_lab)) +
+    geom_bar(position = "dodge", stat = "identity") +
+    labs(title = "Race percentage in police involved/not involved groups") +
+    # Tilt xtick labels to avoid overlap
+    theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
+
+```
+
+```{r all three factors}
+# This is the first idea that comes off the top of my head
+# Stratifying the "age" column may give bar plots, should also be good
+gun_deaths_modified %>%
+    ggplot(aes(x = race, y = num_age, fill = police_lab)) +
+    geom_boxplot(position = "dodge") +
+    labs(title = "Age in police involved/not involved, per race")
 ```
 
 Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
 
 ```{r stats?}
+t.test(gun_deaths_modified$num_age ~ gun_deaths_modified$police)
 
 
 ```
+Above is the t-test telling whether there is a significant difference between the average age of the group "police involved" and "police not involved".
+
+The conclusion is *significant* (p<0.05).
 
 
 ```{r police_2}
+count_by_police_and_race = gun_deaths_modified %>%
+    group_by(police_lab, race) %>%
+    count() %>%
+    # Now convert "race" to columns, i.e., make the table wider, using `spread()`
+    spread(race, n)   # tibble format actually lost after calling `spread`. This is strange since `spread` is a tidyr func
+kable(count_by_police_and_race, format = "markdown")
+chisq.test(as.matrix(count_by_police_and_race[-1]))    # remove the "row name" column
 
 ```
+Above Chi-square test inquires whether the number of gun deaths in different racial groups is independent of police involvement.
 
-```{r stats_2?}
-
-
-```
+I just left one R coding block blank here. Similar to the previous t-test, we are able to perform t-test in groups of different police involvement of various races.
 
 
 Finally, all together now:
+
+Add the p-value of the t-test directly on the graph.
 ```{r police_3}
+gun_deaths_num_age %>%
+    ggplot(aes(x = as.factor(police), y = num_age)) +
+    geom_boxplot() +
+    scale_x_discrete(labels = c("not involved", "involved"), breaks = c(0, 1)) +
+    labs(title = "Age in police involved/not involved groups") +
+    stat_compare_means(method = "t.test")
 
 ```
 
