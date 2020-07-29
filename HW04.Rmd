@@ -38,6 +38,7 @@ deathsPermonth <- gun_deaths %>%
 deathsPermonth_df <- data.frame(deathsPermonth)
 
 kable(deathsPermonth_df, "markdown")
+
 ```
 
 
@@ -56,7 +57,7 @@ ggplot(aes(x = reorder(month, + deaths), y = deaths)) +
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
-
+head(gun_deaths)
 gun_deaths %>%
     group_by(intent) %>%
     count(intent, name = "n") %>%
@@ -64,6 +65,7 @@ ggplot(aes(x = reorder(intent, - n), y = n)) +
     geom_bar(stat = "identity", color = "black", fill = "green") +
     ylab("deaths") +
     xlab("intent")
+
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
@@ -100,6 +102,36 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
+#Most deaths are in Summer. Is there a quicker way to do this? Seems like a lot for a little.
+
+Winter <- gun_deaths %>%
+    filter(month %in% c("1", "2", "3")) %>%
+    count(month, name = "winter_deaths") %>%
+    summarize(Deaths = sum(winter_deaths))
+
+Spring <- gun_deaths %>%
+    filter(month %in% c("4", "5", "6")) %>%
+    count(month, name = "spring_deaths") %>%
+    summarize(Deaths = sum(spring_deaths))
+
+Summer <- gun_deaths %>%
+    filter(month %in% c("7", "8", "9")) %>%
+    count(month, name = "summer_deaths") %>%
+    summarize(Deaths = sum(summer_deaths))
+
+Fall <- gun_deaths %>%
+    filter(month %in% c("10", "11", "12")) %>%
+    count(month, name = "fall_deaths") %>%
+    summarize(Deaths = sum(fall_deaths))
+
+Winter_df <- data.frame(Winter, row.names = "Winter")
+Spring_df <- data.frame(Spring, row.names = "Spring")
+Summer_df <- data.frame(Summer, row.names = "Summer")
+Fall_df <- data.frame(Fall, row.names = "Fall")
+
+Seasons <- rbind(Winter_df, Spring_df, Summer_df, Fall_df)
+
+kable(Seasons, "markdown")
 
 ```
 
