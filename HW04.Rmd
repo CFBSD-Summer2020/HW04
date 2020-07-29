@@ -21,8 +21,8 @@ The gun_deaths.csv is provided in the repository.
 library(tidyverse)    # load tidyverse packages, including ggplot2
 library(knitr)
 # read in the data
-gun_deaths <- read_csv("gun_deaths.csv", col_types = "dccdcccdcc")
-
+gun_deaths <- read_csv("gun_deaths.csv", col_types = "dccdcdcdcc")
+head(gun_deaths)
 ```
 
 ## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
@@ -57,7 +57,7 @@ ggplot(aes(x = reorder(month, + deaths), y = deaths)) +
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
-head(gun_deaths)
+
 gun_deaths %>%
     group_by(intent) %>%
     count(intent, name = "n") %>%
@@ -72,7 +72,20 @@ ggplot(aes(x = reorder(intent, - n), y = n)) +
 
 ```{r age_&_sex}
 
+gun_deaths %>%
+    group_by(age, sex) %>%
+ggplot(aes(sex, age, fill = sex)) +
+    geom_boxplot()
 
+avg_age <- gun_deaths %>%
+    group_by(age, sex) %>%
+    filter(sex == "F") %>%
+    count(age, name = "age_count")
+    
+avg_age_df <- data.frame(avg_age)
+avg_age_df
+apply(avg_age_df, 2, mean)
+    
 ```
 
 
@@ -142,10 +155,28 @@ kable(Seasons, "markdown")
 
 ```{r race}
 
+intent_deaths <- gun_deaths %>%
+    group_by(race, intent) %>%
+    filter(intent %in% c("Homicide", "Suicide"), race %in% c("White", "Black", "Hispanic")) %>%
+    count(intent, name  = "H_S_Deaths")
+
+ggplot(intent_deaths, aes(x = race, y = H_S_Deaths, fill = intent)) +
+    geom_col(position = "dodge") +
+    ylab("Gun Deaths") +
+    xlab(element_blank())
+
 ```
 
 (hint maybe looking at percentages would be good)
 ```{r race_2}
+intent_deaths <- gun_deaths %>%
+    group_by(race, intent) %>%
+    filter(intent %in% c("Homicide", "Suicide"), race %in% c("White", "Black", "Hispanic")) %>%
+    count(intent, name  = "H_S_Deaths") %>%
+
+
+    
+
 
 ```
 
