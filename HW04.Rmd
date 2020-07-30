@@ -3,6 +3,10 @@ title: "Exploring Gun Deaths in America"
 output: github_document
 ---
 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning=FALSE, message=FALSE)
+```
+
 ## Objectives
 * To explore gun death data curated by FiveThirtyEight [original data available here](https://github.com/fivethirtyeight/guns-data) by
     * Month
@@ -18,44 +22,94 @@ output: github_document
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
+library(viridis)      # color scheme
+library(scales)       # required for overlaying percentages over bar plots
+
+# set theme
+theme_set(theme_bw())
+
+my_colors <- c("#2a9d8f", "#E76F51", "#E9C46A", "#3a6b7e", "#F4A261")
 
 # read in the data
+gun_deaths <- read.csv('gun_deaths.csv', 
+                       na.strings=c("NotAvailable"), 
+                       colClasses = c("integer", "integer",  
+                                      "factor", "factor",  
+                                      "factor",  "integer",  
+                                      "factor", "integer",  
+                                      "factor",  "factor"))
+
+# I thought the following would work, and I can't figure out why it doesn't.
+# gun_deaths <- gun_deaths %>% mutate(race = replace(race, race == "Not Availabletive American/Not Availabletive Alaskan", "Native AmericaNative"))
+# It just replaces my string with NA, not the new string. :(
+
+# So I did this instead:
+gun_deaths <- gun_deaths %>% mutate(race = gsub("Not Availabletive American/Not Availabletive Alaskan", "Native American/Native Alaskan", race))
+gun_deaths <- gun_deaths %>% mutate(race = gsub("/", "/\n", race))
 
 ```
 
 ## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
 
-Knitr is part of the knitr package. Allows you to change column names and add captions and make pretty tables in your knitted document. Hint: set the argument format = "markdown"
+kable is part of the knitr package. Allows you to change column names and add captions and make pretty tables in your knitted document. Hint: set the argument format = "markdown"
 
 
 ```{r month, warning=FALSE}
+deaths_per_month <- gun_deaths %>% count(month)
 
+knitr::kable(deaths_per_month, format = "markdown")
 ```
 
 
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
-
+ggplot(deaths_per_month, aes(month.abb[month], n)) +
+  geom_bar(stat = "identity") +
+  xlab("Month") +
+  ylab("Gun Deaths") +
+  scale_x_discrete(limits = month.abb)
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
+deaths_per_intent <- gun_deaths %>% count(intent)
 
+ggplot(deaths_per_intent, aes(reorder(intent, -n), n)) +
+  geom_bar(stat = "identity") +
+  xlab("Intent") +
+  ylab("Gun Deaths")
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
-
+ggplot(gun_deaths, aes(sex, age)) +
+  geom_boxplot()
 ```
 
+```{r female avg age}
+avg_age_f <- gun_deaths %>% 
+  group_by(sex) %>% 
+  summarize(average_age = mean(age, na.rm=TRUE)) %>%
+  filter(sex == "F")
+
+paste("Average age of female gun death victims:", avg_age_f[[2]])
+```
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
+count_m_white_hs <- gun_deaths %>%
+  filter(race == "White" & 
+           sex == "M" & 
+           education != "Less than HS" & 
+           year == 2012) %>%
+  count()
 
+paste("Number of white males with at least a HS education killed by guns in 2012:", 
+      count_m_white_hs[[1]])
 ```
 
 
@@ -69,7 +123,15 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
+gun_deaths_top_season <- fct_collapse(month.abb[gun_deaths$month],
+  Winter = c("Jan", "Feb", "Mar"),
+  Spring = c("Apr", "May", "Jun"),
+  Summer = c("Jul", "Aug", "Sep"),
+  Fall = c("Oct", "Nov", "Dec")) %>%
+  fct_count() %>%
+  top_n(1, n)
 
+paste("Season with the most gun deaths:", gun_deaths_top_season[[1]])
 ```
 
 
@@ -78,44 +140,95 @@ Assume that:
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 ```{r race}
+# Would nont have been able to figure out how to put percentages on the graphs without this tutorial:
+# https://rkabacoff.github.io/datavis/Bivariate.html
 
+gun_deaths_by_intent_and_race <- gun_deaths %>%
+  group_by(race, intent) %>%
+  summarize(n = n()) %>% 
+  mutate(pct = n/sum(n),
+         lbl = scales::percent(pct))
+gun_deaths_by_intent_and_race
+
+ggplot(gun_deaths_by_intent_and_race, aes(race, y = pct, fill = intent)) +
+  geom_bar(stat = "identity", position = "fill") +
+  geom_text(aes(label = lbl), size = 3, position = position_stack(vjust = 0.5)) +
+  theme(axis.text.x = element_text(vjust = 0.5, hjust=0.5)) +
+  scale_y_continuous(breaks = seq(0, 1, .2), label = percent) +
+  scale_fill_brewer(palette = "Set3", direction=1) +
+  xlab("Race") +
+  ylab("Percent of Deaths") +
+  labs(fill = "Intent")
 ```
 
 (hint maybe looking at percentages would be good)
-```{r race_2}
 
-```
-
+Answer: Whites who are killed by guns are more likely to die of suicide than homicide. Black and hispanic people killed by guns are more likely to die of homicide.
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
-```{r police}
+```{r police and age}
+ggplot(gun_deaths, aes(factor(police, levels = c(0, 1), labels = c("No", "Yes")), age)) +
+  geom_boxplot() +
+  xlab("Police Involvement") +
+  ylab("Age") +
+  coord_flip()
+```
 
+```{r police and race}
+gun_deaths_by_police_and_race <- gun_deaths %>%
+  group_by(race, police) %>%
+  summarize(n = n()) %>% 
+  mutate(pct = n/sum(n),
+         lbl = scales::percent(pct))
+
+ggplot(gun_deaths_by_police_and_race, 
+       aes(race, y = pct, fill = factor(police, levels = c(0, 1), labels = c("No", "Yes")))) +
+  geom_bar(stat = "identity", position = "fill") +
+  geom_text(aes(label = lbl), size = 3, position = position_stack(vjust = 0.5)) +
+  theme(axis.text.x = element_text(vjust = 0.5, hjust=0.5)) +
+  scale_y_continuous(breaks = seq(0, 1, .2), label = percent) +
+  scale_fill_brewer(palette = "Set2") +
+  xlab("Race") +
+  ylab("Percent of Deaths") +
+  labs(fill = "Police\nInvolvement")
 ```
 
 Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
 
-```{r stats?}
+### Is police involvement correlated with age?
+
+```{r stats police and age}
+# Is age (independent variable) correlated with police involvement (dependent variable)?
+# Test with logistic regression
+
+mylogit <- glm(police ~ age, data = gun_deaths, family = "binomial")
+summary(mylogit)
+
+# p-value <2e-16 ***
+# For every unit increase in age, the log odds of police involvement decrease by 0.02349.
+```
+Age has a significant negative correlation with police involvement.
+
+### Is police involvement correlated with race?
+
+```{r stats police and race}
+# Is race (independent variable) correlated with police involvement (dependent variable)?
+# Test with two-way chi squared
+
+chisq <- chisq.test(x = table(gun_deaths$police, gun_deaths$race))
 
 
+chisq$p.value
+chisq$residuals
+
+# p-value <2e-16 ***
+# Race is significantly correlated with police involvement.
+# There is a positive association between all races and police involvement, except for whites. 
+# There is a negative association between being white and police involvement.
 ```
 
-
-```{r police_2}
-
-```
-
-```{r stats_2?}
-
-
-```
-
-
-Finally, all together now:
-```{r police_3}
-
-```
-
+Race has a significant correlation with police involvement. 
 
 ## Session info
 
