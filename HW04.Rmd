@@ -12,15 +12,18 @@ output: github_document
     * Season
     * Intent by race
     * Police-relatedness 
+    
+
 
 ## Read in the data
 
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
+install.packages("tidyverse")
 library(tidyverse)    # load tidyverse packages, including ggplot2
-
+library(ggplot2)
 # read in the data
-
+gunDeaths <-read.csv(file="gun_deaths.csv", head=TRUE, sep=",")
 ```
 
 ## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
@@ -29,25 +32,56 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 
 ```{r month, warning=FALSE}
-
+library(knitr)
+myTable <-kable(gunDeaths, format="markdown" )
+head(myTable)
 ```
 
 
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
-
+ggplot(gunDeaths, aes(month))+
+    geom_bar() +
+    scale_x_continuous( "Month",
+     breaks = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12),
+     labels = c('Jan', 'Feb', 'Mar', 'Apr', 'May', 'June','July','Aug','Sept', 'Oct', 'Nov', 'Dec'))+
+    labs(title="Gun Deaths in 2012", y="Death Count")
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
+# ggplot(gunDeaths, aes(month, fill=intent))+
+#     geom_bar(position="dodge")
 
+gD_Intent<- gunDeaths %>%
+    group_by(intent) %>%
+    count() 
+
+gD_Intent$intent<- factor(gD_Intent$intent, 
+                levels=c("Suicide", "Homicide", "Accidental", "Undetermined", "Not Available")) 
+
+ggplot(gD_Intent, aes(x=intent, y= n, fill=intent))+
+    geom_bar(stat="identity")+
+    labs(title="Gun Deaths by Intentions in 2012", x=element_blank(), y="Death Count", fill="Reported Intentions")
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
+gunDeaths$age<- as.numeric(gunDeaths$age)  # had to add this because my argument wasn't numeric
+ageFemale <- gunDeaths %>%
+    select(sex, age) %>%
+    filter(sex == "F")
+avgAgeFemale<- mean(ageFemale$age)
+#avgAgeFemale
+
+ggplot(gunDeaths, aes(sex, age, fill=sex))+
+    geom_boxplot()+
+    annotate("text", x=1, y=80, label=paste("Avg F age :", avgAgeFemale))+
+    labs(title="Ages of gun-caused deaths by gender", x=element_blank(), y="Age", fill="Gender")
+   
 
 ```
 
@@ -55,7 +89,12 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
-
+wMales<- gunDeaths %>%
+    select(sex, race, education) %>%
+    filter(education %in% c("HS/GED", "Some college", "BA+"), race== "White", sex=="M") %>%
+    count()
+wMales
+#46227 were killed by guns in 2012.
 ```
 
 
@@ -69,52 +108,32 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
-
+gunDeaths$month <- factor(gunDeaths$month, labels= c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+Winter<- gunDeaths %>%
+    select(month) %>%
+    filter(month %in% c("Jan", "Feb", "Mar")) %>%
+    count() 
+Spring<- gunDeaths %>%
+    select(month) %>%
+    filter(month %in% c("Apr", "May", "Jun")) %>%
+    count() 
+Summer<- gunDeaths %>%
+    select(month) %>%
+    filter(month %in% c("Jul", "Aug", "Sep")) %>%
+    count() 
+Fall<- gunDeaths %>%
+    select(month) %>%
+    filter(month %in% c("Oct", "Nov", "Dec")) %>%
+    count() 
+Winter
+Spring
+Summer
+Fall
+max(Winter, Spring, Summer, Fall)
+#Summer has max deaths = 26280
 ```
 
 
-# These are more open ended questions from here on out, you could look at making multiple summaries or types of plots. 
-
-### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
-
-```{r race}
-
-```
-
-(hint maybe looking at percentages would be good)
-```{r race_2}
-
-```
-
-
-### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
-
-```{r police}
-
-```
-
-Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
-
-```{r stats?}
-
-
-```
-
-
-```{r police_2}
-
-```
-
-```{r stats_2?}
-
-
-```
-
-
-Finally, all together now:
-```{r police_3}
-
-```
 
 
 ## Session info
