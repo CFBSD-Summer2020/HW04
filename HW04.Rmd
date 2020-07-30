@@ -53,10 +53,10 @@ knitr::kable(guns %>% count(month), format = "markdown")
 ggplot(guns, aes(x= month)) + geom_bar() + 
 ##this yields a graph that has the columns on a scale (so no true 1, 2, 3, 4.. etc) Instead the default x-axis was 0-12.5   
 
-scale_x_discrete(labels = c("January", "February" , "March" , "April" , "May" , "June" , "July" , "August" , "September" , "October" , "November", "December"))
+#scale_x_discrete(labels = c("January", "February" , "March" , "April" , "May" , "June" , "July" , "August" , "September" , "October" , "November", "December"))
 ##this didn't solve the problem, but I'm tired. 
    
-
+scale_x_discrete(limit = month.abb)  ###this worked!!! I am peer reviewing Andrea Watson's code and see this is how she used the scale_x_discrete function
 
 ##BELOW IS GARBAGE AKA MY FIRST ATTEMPT AT THIS 
     #monthly <- table(month_chart$month)
