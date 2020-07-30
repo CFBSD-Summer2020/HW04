@@ -3,39 +3,78 @@ title: "Exploring Gun Deaths in America"
 output: github_document
 ---
 
-## Objectives
-* To explore gun death data curated by FiveThirtyEight [original data available here](https://github.com/fivethirtyeight/guns-data) by
-    * Month
-    * Intent
-    * Age and sex
-    * Education
-    * Season
-    * Intent by race
-    * Police-relatedness 
+# Exploring gun deaths in America (2012 - 2014)
 
-## Read in the data
+## 1. Load the packages and read in the gun deaths data
 
-The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
-library(tidyverse)    # load tidyverse packages, including ggplot2
+# Load the packages
 
-# read in the data
+library(tidyverse) 
+library(dplyr)
+library(knitr)
+library(ggplot2)
+library(data.table)
+library(RColorBrewer)
+
+# Read in the data - fread() requires loading data.table package
+
+gun_deaths <- fread("gun_deaths.csv")
 
 ```
 
-## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
 
-Knitr is part of the knitr package. Allows you to change column names and add captions and make pretty tables in your knitted document. Hint: set the argument format = "markdown"
-
+## 2. Generate a data frame that summarizes the number of gun deaths per month and print with kable()
 
 ```{r month, warning=FALSE}
 
+# Sort the data by month
+
+arranged_by_month <- gun_deaths %>%
+    arrange(month)
+
+# Change the numbers of the months to the abbreviations of months' names
+
+arranged_by_month$month <- factor(arranged_by_month$month, c(1:12), labels = month.abb)
+
+# Generate a table summarizing numbers of deaths in each month of the year
+
+deaths_per_month <- table(arranged_by_month$month)
+
+# Convert the table to a data frame
+
+deaths_per_month_df <- data.frame(deaths_per_month)
+
+# Print the table with modified column names; align the values in the columns
+
+kable(deaths_per_month_df, col.names = c("Month", "Number of gun deaths"), align = "lc", format = "markdown")
+
 ```
 
 
-### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
+## 3. Generate a bar chart showing the total number of gun deaths per month in years 2012-2014 
 
 ```{r month_chart}
+# Change the column names in the data frame
+
+colnames(deaths_per_month_df) <- c("Month", "Number")
+
+# Create a bar chart
+
+bar_plot <- ggplot(data = deaths_per_month_df, aes(x = Month, y = Number, width = 0.75)) +
+  geom_bar(stat = "identity", color = "black", fill = brewer.pal(length(unique(deaths_per_month_df$Month)), "Set3")) +
+    labs(title = "Number of gun deaths in US by month (total for years 2012-14)", x = "Month", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold", hjust = 0.5),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) +
+    
+    scale_y_continuous(breaks = c(0, 1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000), limits = c(0, 10000)) 
+
+bar_plot
 
 ```
 
@@ -43,11 +82,83 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 ```{r intent}
 
+# Sort the data by intent
+
+arranged_by_intent <- gun_deaths %>%
+    arrange(intent)
+
+# Generate a table summarizing deaths by intent
+
+deaths_by_intent <- table(arranged_by_intent$intent)
+
+# Convert the table to a data frame
+
+deaths_by_intent_df <- data.frame(deaths_by_intent)
+
+# Print the table with modified column names; align the values in the columns
+
+kable(deaths_by_intent_df, col.names = c("Intent", "Number of gun deaths"), align = "lc", format = "markdown")
+
+colnames(deaths_by_intent_df) <- c("Intent", "Number")
+
+
+
+bar_plot_intent <- ggplot(data = deaths_by_intent_df, aes(x = reorder(Intent, -Number), y = Number, width = 0.75, fill = Intent)) +
+  geom_bar(stat = "identity", color = "black", fill = brewer.pal(length(unique(deaths_by_intent_df$Intent)), "Set3")) +
+    
+    labs(title = "Number of gun deaths in US by intent (total for years 2012-14)", x = "Intent", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.position = "none", 
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) +
+    
+    scale_y_continuous(breaks = c(0, 10000, 20000, 30000, 40000, 50000, 60000, 70000), limits = c(0, 70000)) 
+
+bar_plot_intent
+
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
+
+by_sex_age <- gun_deaths %>%
+    select(sex,age) %>%
+    arrange(age) %>%
+    filter(age != "Not Available") 
+
+by_sex_age$age <- as.numeric(as.character(by_sex_age$age))
+
+by_sex_age$sex <- factor(by_sex_age$sex, c("F", "M"), c("Female", "Male"))
+
+ggplot(by_sex_age, aes(x = sex, y = age, fill = sex)) +
+    geom_boxplot(outlier.shape = NA) +
+    
+    scale_fill_manual(values=c("#E69F00", "#56B4E9")) +
+    labs(title = "Age of gun death victims (for years 2012-14)", x = "Sex", y = "Age") +
+
+    theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.position = "none",
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 11, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) +
+    
+    scale_y_continuous(breaks = c(0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100), limits = c(0, 100)) +
+
+    annotate("text", x = 0.55, y = 43.7, label = "43.7", fontface = 2)
+
+average_age_F <- by_sex_age %>%
+    filter(sex == "Female") %>%
+    summarize(women_average_age = mean(age))
+
+average_age_F
+
 
 ```
 
@@ -56,8 +167,17 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 ```{r education}
 
-```
+white_M_high_school <- gun_deaths %>%
+    select(year, sex, race, education) %>%
+    filter(year == "2012", sex == "M", race == "White", education == c("BA+", "HS/GED", "Some college"))
 
+Number_of_M_HS_victims <- nrow(white_M_high_school)
+
+Number_of_M_HS_victims
+
+
+```
+### _5063 white males with at least a high school education were killed in 2012._
 
 ## Which season of the year has the most gun deaths?
 
@@ -70,8 +190,60 @@ Assume that:
 
 ```{r season}
 
-```
+deaths_months <- gun_deaths %>%
+    select(month)
 
+deaths_months$month <- factor(deaths_months$month, c(1:12), labels = month.abb)
+
+table(deaths_months)
+
+deaths_months
+
+deaths_by_season <- deaths_months %>%
+    mutate(season = month) %>%
+    mutate(season = recode(season, 
+                           Jan = "Winter",
+                           Feb = "Winter",
+                           Mar = "Winter",
+                           Apr = "Spring",
+                           May = "Spring",
+                           Jun = "Spring",
+                           Jul = "Summer",
+                           Aug = "Summer",
+                           Sep = "Summer",
+                           Oct = "Fall",
+                           Nov = "Fall",
+                           Dec = "Fall")) %>%
+    select(season)
+    
+
+deaths_by_season_df <- data.frame(table(deaths_by_season))
+deaths_by_season_df
+
+colnames(deaths_by_season_df) <- c("Season", "Number")
+
+bar_plot_season <- ggplot(data = deaths_by_season_df, aes(x = Season, y = Number, width = 0.75, fill = Season)) +
+  geom_bar(stat = "identity", color = "black", fill = brewer.pal(length(unique(deaths_by_season_df$Season)), "Set3")) +
+  geom_text(aes(label = Number), position=position_dodge(width=1.5), vjust=-0.8) +
+    
+    labs(title = "Number of gun deaths in US by season (for years 2012-14)", x = "Season", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.position = "none", 
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) +
+    
+    scale_y_continuous(breaks = c(0, 5000, 10000, 15000, 20000, 25000, 30000), limits = c(0, 30000)) 
+
+bar_plot_season
+
+
+
+```
+### _Summer had the highest number of gun deaths across the years 2012-14._
 
 # These are more open ended questions from here on out, you could look at making multiple summaries or types of plots. 
 
@@ -79,17 +251,178 @@ Assume that:
 
 ```{r race}
 
+race_intent <- gun_deaths %>%
+    select(race, intent) %>%
+    filter(race == c("White", "Black", "Hispanic"), intent == c("Suicide", "Homicide"))
+
+race_intent_df <- data.frame(table(race_intent))
+
+
+colnames(race_intent_df) <- c("Race", "Intent", "Number")
+race_intent_df
+
+bar_plot_race_intent <- ggplot(data = race_intent_df, aes(x = Intent, y = Number, width = 0.9, fill = Race)) +
+  geom_bar(stat = "identity", color = "black", position = "dodge2") +
+    
+    labs(title = "Number of males killed by guns because of suicide and homicide \nin US between 2012 and 2014 by race", x = "Intent", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) +
+    
+    scale_y_continuous(breaks = c(0, 2000, 4000, 6000, 8000, 10000), limits = c(0, 10000)) 
+
+
+bar_plot_race_intent
+
+
 ```
+
 
 (hint maybe looking at percentages would be good)
 ```{r race_2}
+race_intent_perc <- race_intent_df %>%
+    mutate(Percentage = Number/sum(Number))
+
+race_intent_perc_plot <- ggplot(race_intent_perc, aes(x = Intent, y = Percentage, fill = Race)) +
+  geom_bar(position = "fill", stat="identity", color = "black") +
+  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1.00), labels = scales::percent) +
+
+ labs(title = "Percentage of males killed by guns because of suicide and homicide \nin US between 2012 and 2014 by race", x = "Intent", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) 
+
+race_intent_perc_plot
 
 ```
+ggplot(race_intent_df, aes(x = Intent, y =  fill = Number)) +
+  geom_bar(color = "black") +
+  scale_y_continuous(labels = scales::percent)
+### _Summer had the highest number of gun deaths across the years 2012-14._
 
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police}
+
+police_age <- gun_deaths %>%
+    select(age, police)
+
+police_age_df <- data.frame(table(police_age))
+
+colnames(police_age_df) <- c("Age", "Police", "Number")
+
+police_age_df$Age <- as.numeric(as.character(police_age_df$Age))
+
+decade1 <- police_age_df %>%
+    filter(Age %in% c(0: 10)) %>%
+    mutate(Decade = "0-10")
+
+decade2 <- police_age_df %>%
+    filter(Age %in% c(11: 20)) %>%
+    mutate(Decade = "11-20")
+
+decade3 <- police_age_df %>%
+    filter(Age %in% c(21: 30)) %>%
+    mutate(Decade = "21-30")
+
+decade4 <- police_age_df %>%
+    filter(Age %in% c(31: 40)) %>%
+    mutate(Decade = "31-40")
+
+decade5 <- police_age_df %>%
+    filter(Age %in% c(41: 50)) %>%
+    mutate(Decade = "41-50")
+
+decade6 <- police_age_df %>%
+    filter(Age %in% c(51: 60)) %>%
+    mutate(Decade = "51-60")
+
+decade7 <- police_age_df %>%
+    filter(Age %in% c(61: 70)) %>%
+    mutate(Decade = "61-70")
+
+decade8 <- police_age_df %>%
+    filter(Age %in% c(71: 80)) %>%
+    mutate(Decade = "71-80")
+
+decade9 <- police_age_df %>%
+    filter(Age %in% c(81: 90)) %>%
+    mutate(Decade = "81-90")
+
+decade10 <- police_age_df %>%
+    filter(Age %in% c(91: 100)) %>%
+    mutate(Decade = "91-100")
+
+decade11 <- police_age_df %>%
+    filter(Age %in% c(101: 110)) %>%
+    mutate(Decade = "101-110")
+
+by_decade <- rbind(decade1, decade2, decade3, decade4, decade5, decade6, decade7, decade8, decade9, decade10, decade11)
+
+
+by_decade <- by_decade %>%
+    select(Police, Number, Decade) %>%
+    group_by(Decade, Police) %>%
+    summarize(Number = sum(Number))
+
+by_decade
+    
+
+by_decade$Decade <- factor(by_decade$Decade,levels = c("0-10", "11-20",  "21-30", "31-40", "41-50", "51-60", "61-70",  "71-80", "81-90", "91-100", "101-110"))
+
+
+bar_plot_police_age <- ggplot(data = by_decade, aes(x = Decade, y = Number, width = 0.9, fill = Police)) +
+  geom_bar(stat = "identity", color = "black", position = "dodge2") +
+    
+        labs(title = "", x = "Age", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) +
+    
+    scale_y_continuous(breaks = c(0, 5000, 10000, 15000, 20000, 23000), limits = c(0,23000)) 
+
+
+bar_plot_police_age
+
+
+
+
+age_police_perc <- by_decade %>%
+    mutate(Percentage = Number/sum(Number))
+
+age_police_perc
+
+age_police_perc_plot <- ggplot(age_police_perc, aes(x = Decade, y = Percentage, fill = Police)) +
+  geom_bar(position = "fill", stat="identity", color = "black") +
+  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1.00), labels = scales::percent) +
+
+ labs(title = " race", x = "Age [yo]", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) 
+
+age_police_perc_plot
 
 ```
 
@@ -99,12 +432,50 @@ Think about performing stats such as a t.test to see if differences you are plot
 
 
 ```
-
-
+``` 
+```
 ```{r police_2}
 
-```
+police_race <- gun_deaths %>%
+    select(race, police)
 
+by_race <- data.frame(table(police_race))
+colnames(by_race) <- c("Race", "Police", "Number")
+
+
+by_race <- by_race %>%
+    mutate(Race = recode(Race, 
+                           "Not Availabletive American/Not Availabletive Alaskan" = "Native American/\nNative Alaskan",
+                         "Asian/Pacific Islander" = "Asian/\nPacific Islander"))
+    
+by_race
+
+race_police_perc <- by_race %>%
+    mutate(Percentage = Number/sum(Number))
+
+race_police_perc
+
+
+race_police_perc_plot <- ggplot(race_police_perc, aes(x = Race, y = Percentage, fill = Police)) +
+  geom_bar(position = "fill", stat="identity", color = "black") +
+  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1.00), labels = scales::percent) +
+
+ labs(title = " race", x = "Intent", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) 
+
+race_police_perc_plot
+
+```
+``` 
+
+```
 ```{r stats_2?}
 
 
@@ -114,8 +485,246 @@ Think about performing stats such as a t.test to see if differences you are plot
 Finally, all together now:
 ```{r police_3}
 
+#POLICE INVOLVED
+
+police_race_age <- gun_deaths %>%
+    select(age, race, police)
+
+by_race_age_df <- data.frame(table(police_race_age))
+colnames(by_race_age_df) <- c("Age", "Race", "Police", "Number")
+
+by_race_age_df <- by_race_age_df %>%
+    mutate(Race = recode(Race, 
+                           "Not Availabletive American/Not Availabletive Alaskan" = "Native American/\nNative Alaskan",
+                         "Asian/Pacific Islander" = "Asian/\nPacific Islander"))
+
+by_race_age_df$Age <- as.numeric(as.character(by_race_age_df$Age))
+
+decade1 <- by_race_age_df %>%
+    filter(Age %in% c(0: 10)) %>%
+    mutate(Decade = "0-10")
+
+decade2 <- by_race_age_df %>%
+    filter(Age %in% c(11: 20)) %>%
+    mutate(Decade = "11-20")
+
+decade3 <- by_race_age_df %>%
+    filter(Age %in% c(21: 30)) %>%
+    mutate(Decade = "21-30")
+
+decade4 <- by_race_age_df %>%
+    filter(Age %in% c(31: 40)) %>%
+    mutate(Decade = "31-40")
+
+decade5 <- by_race_age_df %>%
+    filter(Age %in% c(41: 50)) %>%
+    mutate(Decade = "41-50")
+
+decade6 <- by_race_age_df %>%
+    filter(Age %in% c(51: 60)) %>%
+    mutate(Decade = "51-60")
+
+decade7 <- by_race_age_df %>%
+    filter(Age %in% c(61: 70)) %>%
+    mutate(Decade = "61-70")
+
+decade8 <- by_race_age_df %>%
+    filter(Age %in% c(71: 80)) %>%
+    mutate(Decade = "71-80")
+
+decade9 <- by_race_age_df %>%
+    filter(Age %in% c(81: 90)) %>%
+    mutate(Decade = "81-90")
+
+decade10 <- by_race_age_df %>%
+    filter(Age %in% c(91: 100)) %>%
+    mutate(Decade = "91-100")
+
+decade11 <- by_race_age_df %>%
+    filter(Age %in% c(101: 110)) %>%
+    mutate(Decade = "101-110")
+
+by_decade_age_race <- rbind(decade1, decade2, decade3, decade4, decade5, decade6, decade7, decade8, decade9, decade10, decade11)
+
+
+by_decade_age_race <- by_decade_age_race %>%
+    select(Police, Number, Decade, Race) %>%
+    filter(Police == 1) %>%
+    group_by(Decade, Race, Police) %>%
+    summarize(Number = sum(Number))
+
+
+by_decade_age_race
+
+
+by_decade_age_race$Decade <- factor(by_decade_age_race$Decade,levels = c("0-10", "11-20",  "21-30", "31-40", "41-50", "51-60", "61-70",  "71-80", "81-90", "91-100", "101-110"))
+
+
+bar_plot_police_age_race <- ggplot(data = by_decade_age_race, aes(x = Decade, y = Number, width = 0.9, fill = Race)) +
+  geom_bar(stat = "identity", color = "black", position = "dodge2") +
+    
+        labs(title = "Police involved", x = "Age", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) +
+    
+    scale_y_continuous(breaks = c(0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200), limits = c(0,200)) 
+
+
+bar_plot_police_age_race
+
+
+#Percent involved
+
+
+
+
+
+
+
+
+#POLICE NOT INVOLVED
+
+
+police_race_age <- gun_deaths %>%
+    select(age, race, police)
+
+by_race_age_df <- data.frame(table(police_race_age))
+colnames(by_race_age_df) <- c("Age", "Race", "Police", "Number")
+
+by_race_age_df <- by_race_age_df %>%
+    mutate(Race = recode(Race, 
+                           "Not Availabletive American/Not Availabletive Alaskan" = "Native American/\nNative Alaskan",
+                         "Asian/Pacific Islander" = "Asian/\nPacific Islander"))
+
+by_race_age_df$Age <- as.numeric(as.character(by_race_age_df$Age))
+
+decade1 <- by_race_age_df %>%
+    filter(Age %in% c(0: 10)) %>%
+    mutate(Decade = "0-10")
+
+decade2 <- by_race_age_df %>%
+    filter(Age %in% c(11: 20)) %>%
+    mutate(Decade = "11-20")
+
+decade3 <- by_race_age_df %>%
+    filter(Age %in% c(21: 30)) %>%
+    mutate(Decade = "21-30")
+
+decade4 <- by_race_age_df %>%
+    filter(Age %in% c(31: 40)) %>%
+    mutate(Decade = "31-40")
+
+decade5 <- by_race_age_df %>%
+    filter(Age %in% c(41: 50)) %>%
+    mutate(Decade = "41-50")
+
+decade6 <- by_race_age_df %>%
+    filter(Age %in% c(51: 60)) %>%
+    mutate(Decade = "51-60")
+
+decade7 <- by_race_age_df %>%
+    filter(Age %in% c(61: 70)) %>%
+    mutate(Decade = "61-70")
+
+decade8 <- by_race_age_df %>%
+    filter(Age %in% c(71: 80)) %>%
+    mutate(Decade = "71-80")
+
+decade9 <- by_race_age_df %>%
+    filter(Age %in% c(81: 90)) %>%
+    mutate(Decade = "81-90")
+
+decade10 <- by_race_age_df %>%
+    filter(Age %in% c(91: 100)) %>%
+    mutate(Decade = "91-100")
+
+decade11 <- by_race_age_df %>%
+    filter(Age %in% c(101: 110)) %>%
+    mutate(Decade = "101-110")
+
+by_decade_age_race <- rbind(decade1, decade2, decade3, decade4, decade5, decade6, decade7, decade8, decade9, decade10, decade11)
+
+
+by_decade_age_race <- by_decade_age_race %>%
+    select(Police, Number, Decade, Race) %>%
+    filter(Police == 0) %>%
+    group_by(Decade, Race, Police) %>%
+    summarize(Number = sum(Number))
+
+
+by_decade_age_race
+
+
+by_decade_age_race$Decade <- factor(by_decade_age_race$Decade,levels = c("0-10", "11-20",  "21-30", "31-40", "41-50", "51-60", "61-70",  "71-80", "81-90", "91-100", "101-110"))
+
+
+bar_plot_police_age_race <- ggplot(data = by_decade_age_race, aes(x = Decade, y = Number, width = 0.9, fill = Race)) +
+  geom_bar(stat = "identity", color = "black", position = "dodge2") +
+    
+        labs(title = "Police not involved", x = "Age", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) +
+    
+    scale_y_continuous(breaks = c(0, 2000, 4000, 6000, 8000, 10000, 12000, 14000), limits = c(0,14000)) 
+
+
+bar_plot_police_age_race
+
+
+#Percent - not involved
+
+
+
+
+
+
+
+
+
+
+
 ```
 
+
+```{r police_3}
+race_age_police_perc <- by_race_age %>%
+    mutate(Percentage = Number/sum(Number))
+
+race_age_police_perc
+
+
+race_age_police_perc_plot <- ggplot(race_age_police_perc, aes(x = Race, y = Percentage, fill = Police)) +
+  geom_bar(position = "fill", stat="identity", color = "black") +
+  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1.00), labels = scales::percent) +
+
+ labs(title = " race", x = "Intent", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) 
+
+race_age_police_perc_plot
+
+
+```
+
+### _Summer had the highest number of gun deaths across the years 2012-14._
 
 ## Session info
 
