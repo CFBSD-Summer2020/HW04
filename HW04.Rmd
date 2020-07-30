@@ -80,7 +80,7 @@ intent <- guns %>%
 
 intent
 
-ggplot(intent, aes(x = reorder(intent, -n) , y = n)) + geom_col()
+ggplot(intent, aes(x = reorder(intent, -n) , y = n)) + geom_col() +labs(x = "Intent of Gun", y = "Total Number of Victims") #labs function added 07/30/2020 
 ##reorder trick picked up from Google search
 ```
 
@@ -89,7 +89,7 @@ ggplot(intent, aes(x = reorder(intent, -n) , y = n)) + geom_col()
 ```{r age_&_sex}
 guns$age <- as.numeric(guns$age) #I stole this from a classmate's work. I saw that without this, my boxplot was giving a value to each age and skewing the overall look of the boxplot, as well being illegible. 
 
-ggplot(guns, aes(x= sex,  y = age)) + geom_boxplot()
+ggplot(guns, aes(x= sex,  y = age)) + geom_boxplot() + labs(x = "Sex of Victim" , y ="Age", title = "Boxplot of Sex vs Age of Gun Vicitims from 2012 -2014") #labs function added 07/30/2020 
 
 all_age <- guns %>%
     select(sex, age) %>%
@@ -126,7 +126,18 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
+Winter <- guns %>% filter(month==c(1:3))
+Spring <- guns %>% filter(month==c(4:6))
+Summer <- guns %>% filter(month==c(7:9))
+Fall <- guns %>% filter(month==c(10:12))
 
+nrow(Winter) #=7824
+nrow(Spring) #=8606
+nrow(Summer) #=8772
+nrow(Fall) #=8401
+
+#Summer has the most deaths
+##I submitted this code on 07/30/2020 , may be the lazy way of (since I am not visually explaining the answer. But I used nrows to see how many rows were in each of the data frames I've made)
 ```
 
 
@@ -137,20 +148,20 @@ Assume that:
 ```{r race}
 white_race <- guns %>% filter(race == "White")
 white_intent <- white_race %>% count(intent)
-ggplot(white_intent, aes(x=reorder(intent, -n), y=n)) + geom_col()
+ggplot(white_intent, aes(x=reorder(intent, -n), y=n)) + geom_col() + labs(x="Intent of Gun" , y = "Numbers of Individuals" , title = "Bar Graph of White Individuals and Intent of Gun Deaths")
 
-
+#labs function added 07/30/2020
 ```
 
 (hint maybe looking at percentages would be good)
 ```{r race_2}
 black_race <- guns %>% filter(race == "Black")
 black_intent <- black_race %>% count(intent)
-ggplot(black_intent, aes(x=reorder(intent, -n), y=n)) + geom_col()
+ggplot(black_intent, aes(x=reorder(intent, -n), y=n)) + geom_col() + labs(x="Intent of Gun" , y = "Numbers of Individuals" , title = "Bar Graph of Black Individuals and Intent of Gun Deaths")
 
 hispanic_race <- guns %>% filter(race == "Hispanic")
 hispanic_intent <- hispanic_race %>% count(intent)
-ggplot(hispanic_intent, aes(x=reorder(intent, -n), y=n)) + geom_col()
+ggplot(hispanic_intent, aes(x=reorder(intent, -n), y=n)) + geom_col() + labs(x="Intent of Gun" , y = "Numbers of Individuals" , title = "Bar Graph of Hispanic Individuals and Intent of Gun Deaths")
 
 
 #more gun victims who were white persons died because of suicide, while black and hispanic persons died because of homicide
