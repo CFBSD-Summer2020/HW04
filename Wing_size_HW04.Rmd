@@ -1,0 +1,114 @@
+---
+title: "wing_size_data"
+author: "Sherzod Tokamov"
+date: "7/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## HW 04: Measuring the effects of ectopic expression of a tumor suppressor protein Kibra on *Drosophila* wing size.
+
+My research focuses on how organ growth is regulated at the molecular level. A key signaling pathway that regulates organ growth in animals is called the Hippo tumor suppressor pathway (Hippo pathway). The function of the Hippo pathway in development is to suppress growth when organs reach their optimal size. So, hyperactivation of the Hippo pathway leads to disproportionately small organs, and inactivation of the pathway leads to disproportionally large organs.
+
+In this excersize, I will investigate the effect of ectopic expression of one of the Hippo pathway components, Kibra, on the fly wing growth. I generated a gain-of-function mutant of Kibra, which should lead to enhanced growth-suppression.
+
+In this exercise control = no ectopic Kibra (only endogenous Kibra is expressed), KibWT = wild-type Kibra is expressed ectopically, and KibS677A = gain-of-function mutant Kibra is ectopically expressed. For a sample image of a *Drosophila* wing and the measurement annotations, please see images below. ![picture](wing/wing.001.png).
+
+```{r}
+library(dplyr)
+library(magrittr)
+library(ggplot2)
+wings_data <- read.csv("wing_dimensions.csv", header = TRUE, stringsAsFactors = FALSE) #read in the data
+size_compare <- wings_data %>%
+  select(genotype, area, length, width) #select specifically the area columns for each genotype
+size_compare %>%
+  group_by(genotype) %>%
+  summarize(avg_size = mean(area)) %>%
+  arrange(desc(avg_size))
+
+ggplot(wings_data, aes(x = reorder(genotype, -area), area, fill = genotype)) +  #reorder(genotype, -area) will order the bars in the descending order.
+  geom_boxplot() +
+  geom_jitter(height = 0, width = 0.05, aes(alpha = 0)) +
+  labs(x = "Genotype", y = "Wing Area (AU)", title = "Effect of ectopic Kibra expression on fly wing size") +
+  theme(legend.position = "none")
+
+```
+
+As predicted from a growth suppressing protein, ectopic expression of Kibra leads to smaller wing size. Note that expression of the gain-of-function mutant version ofKibra (KibS677A) leads to a very dramatic undergrowth.
+
+The growth difference is apparent in the images below, where the dashed yellow line shows the outline of the control wing. ![picture](wings_compare/wings_compare.001.png).
+
+However, if we look carefully at the shape of the wings, we can see that the shape of the wing expressing KibraS677A is very different from the control wing, suggesting that Kibra might inhibit growth in specific regions in the wing.
+
+We can investigate that by comparing growth changes across multiple dimensions in the wings.
+
+```{r}
+aspect_ratios <- wings_data %>%
+  select(genotype, length, width, proximal_width, distal_width) %>%
+  mutate(centralAR = width/length, proximalAR = proximal_width/length, distalAR = distal_width/length)
+```
+The code above produces a new variable, aspect ratios, that will have new columns added with calculated aspect ratios using distal, central, or proximal width. 
+
+```{r}
+library(tidyr)
+library(forcats) 
+aspect_ratios %>%
+  select(genotype, 6:8) %>%
+  gather(key = "Region", value = "Ratio", 2:4) %>%  #rearranges data into long format
+  ggplot(mapping = aes(x = as_factor(genotype), Ratio, fill = Region)) +
+  geom_boxplot() +
+  labs(x = "Genotype", y = "Aspect Ratio by Wing Region", title = "KibraS677A mutant suppresses growth stronger in the proximal wing region")
+
+```
+
+The graph above shows that the decrease in wing width is more dramatic in the proximal region than in the distal region of the wing when the hyperactive version of Kibra, Kibra S677A, is expressed, suggesting that the mutation affects Kibra activity more in the proximal wing region.
+
+We can also graph the data by plotting the region in the x-axis and faceting by genotype.
+```{r}
+aspect_ratios %>%
+  select(genotype, 6:8) %>%
+  gather(key = "Region", value = "Aspect_ratio", 2:4) %>%  #rearranges data into long format
+  ggplot(mapping = aes(x = Region, Aspect_ratio, fill = Region)) +
+  geom_boxplot() +
+  labs(x = "Wing Region", y = "Aspect Ratio by Wing Region", title = "KibraS677A mutant suppresses growth stronger in the proximal wing region") +
+  facet_wrap(~as_factor(genotype))
+```
+
+
+The graphs above show that the width of the wings is non-uniformly decreased in the proximal region of the wing when KibS677A is expressed. What about the length of the wing? We can use the posterior crossvein (pcv, see image above) as an approximating border between proximal length (from wing hinge to pcv) and distal length (from pcv to wing tip).
+
+```{r}
+L4_dimensions <- wings_data %>%
+  select(genotype, L4_length, hinge_pcv, pcv_tip) %>%
+  mutate(proximal_L4 = hinge_pcv/L4_length, distal_L4 = pcv_tip/L4_length)
+
+L4_dimensions %>%
+  select(genotype, 5:6) %>%
+  gather(key = "L4_region", value = "L4_length_ratio", 2:3) %>%
+  ggplot(mapping = aes(x = as_factor(genotype), y = L4_length_ratio, fill = L4_region, ylim = 0.85)) +
+  geom_boxplot() +
+  annotate("text", x=2.7, y = 0.46, label = "p < 0.001") +
+  annotate("rect", xmin = 2.25, xmax=3.2, ymin=0.449, ymax = 0.45, alpha=1, fill = "black") +
+  annotate("text", x=1.7, y = 0.46, label = "p>0.05 (not significant)") +
+  annotate("rect", xmin = 1.2, xmax=2.15, ymin=0.449, ymax = 0.45, alpha=1, fill = "black") +
+  annotate("text", x=1.3, y = 0.61, label = "p>0.05 (not significant)") +
+  annotate("rect", xmin = 0.8, xmax=1.8, ymin=0.5985, ymax = 0.6, alpha=1, fill = "black")+
+  annotate("text", x=2.3, y = 0.63, label = "p < 0.001") +
+  annotate("rect", xmin = 1.8, xmax=2.8, ymin=0.619, ymax = 0.62, alpha=1, fill = "black") +
+  expand_limits(y = 0.65) +
+  labs(x = "Genotype", y = "Proportion of total L4 length", title = "Change in proximal and distal length of L4 vein with respect to total vein length")
+```
+
+
+We can see from the graph above that when KibS677A is expressed, the distal portion of L4 vein becomes longer while the proximal portion of L4 vein becomes shorter with respect to the total length of L4 vein. Together with aspect ratios resutls we saw above, this suggests that KibS677A suppresses tissue growth disproportionally in the proximal region of the wing.
+
+
+
+
+
+
+
+
