@@ -18,9 +18,11 @@ output: github_document
 The gun_deaths.csv is provided in the repository. 
 ```{r load-data, message=FALSE, warning=FALSE}
 library(tidyverse)    # load tidyverse packages, including ggplot2
+library(knitr)
+library(scales)
 
 # read in the data
-
+gun_deaths<-read_csv("gun_deaths.csv") #col_types="cccdcdcdc"
 ```
 
 ## Generating a data frame that summarizes the number of gun deaths per month and printing using `kable()`. 
@@ -29,33 +31,91 @@ Knitr is part of the knitr package. Allows you to change column names and add ca
 
 
 ```{r month, warning=FALSE}
-
+by_month<-gun_deaths%>%
+    filter(year==2012)%>% #I'm just working with data from 2012, because I was having trouble making nice looking graphs using data with the other years
+    group_by(month)%>%
+    summarize(n=n()) #counts the number of rows for each month
+kable(by_month)
 ```
 
 
 ### Generating a bar chart with human-readable labels on the x-axis. That is, each month should be labeled "Jan", "Feb", "Mar" (full or abbreviated month names are fine), not `1`, `2`, `3`.
 
 ```{r month_chart}
-
+ggplot(by_month,aes(x=factor(month),y=n))+
+    geom_col()+
+    labs(x="months",y="number of gun deaths",title="number of gun deaths per month in 2012")+
+    scale_x_discrete(labels=c("1"="Jan","2"="Feb","3"="Mar","4"="Apr","5"="May","6"="Jun","7"="Jul","8"="Aug","9"="Sep","10"="Oct","11"="Nov","12"="Dec"))
 ```
 
 ## Generating a bar chart that identifies the number of gun deaths associated with each type of intent cause of death. The bars should be sorted from highest to lowest values.
 
 ```{r intent}
+by_intent<-gun_deaths%>%
+    group_by(intent)%>%
+    summarize(n=n())%>%
+    arrange(desc(n)) #Kept this line here, but I don't think it's necessary
 
+ggplot(by_intent,aes(x=factor(intent, level=c("Suicide","Homicide","Accidental","Undetermined","Not Available")),y=n))+
+    geom_col()+
+    labs(x="type of intent cause of death",y="number of gun deaths",title="number of gun deaths by type of intent cause of death")
 ```
 
 ## Generating a boxplot visualizing the age of gun death victims, by sex. Print the average age of female gun death victims.
 
 ```{r age_&_sex}
+by_age_sex<-gun_deaths%>%
+    arrange(desc(age))%>%
+    slice(19:n()) #first 18 rows were age=Not available
 
+by_age_sex$age<-as.numeric(by_age_sex$age) #the age column was read as character, so I used this to change it to numeric to allow for proper plotting
+    
+ggplot(by_age_sex,aes(x=sex,y=age))+
+    geom_boxplot()+
+    labs(x="sex",y="age",title="boxplot of ages of gun death victims by sex")
+
+by_age_sex_female<-by_age_sex%>%
+    filter(sex=="F")
+
+print(paste("The average age of female gun death victims is ",mean(by_age_sex_female$age)))
 ```
 
 
 ## How many white males with at least a high school education were killed by guns in 2012?
 
 ```{r education}
+#I didn't know how to filter for all the correct education values, so I created separate data frames for each and summed the counts at the end lol
+by_hs_wm_ba<-gun_deaths%>%
+    filter(year==2012)%>%
+    filter(education=="BA+")%>%
+    #filter(education=="Some college")%>%
+    #filter(education=="HS/GED")%>%
+    filter(race=="White")%>%
+    filter(sex=="M")%>%
+    group_by(sex)%>%
+    summarize(n=n())
 
+by_hs_wm_sc<-gun_deaths%>%
+    filter(year==2012)%>%
+    #filter(education=="BA+")%>%
+    filter(education=="Some college")%>%
+    #filter(education=="HS/GED")%>%
+    filter(race=="White")%>%
+    filter(sex=="M")%>%
+    group_by(sex)%>%
+    summarize(n=n())
+
+by_hs_wm_hs<-gun_deaths%>%
+    filter(year==2012)%>%
+    #filter(education=="BA+")%>%
+    #filter(education=="Some college")%>%
+    filter(education=="HS/GED")%>%
+    filter(race=="White")%>%
+    filter(sex=="M")%>%
+    group_by(sex)%>%
+    summarize(n=n())
+
+print(paste(sum(by_hs_wm_ba[2:2],by_hs_wm_sc[2:2],by_hs_wm_hs[2:2])," white males with at least a high school education were killed by guns in 2012."))
 ```
 
 
@@ -69,7 +129,26 @@ Assume that:
 * Fall = October-December
 
 ```{r season}
+by_season<-gun_deaths%>%
+    mutate(season=month)
 
+by_season$season<-gsub(pattern="10|11|12", replacement = "Fall",x=by_season$season) #need to replace Fall months first to get rid of the numbers that will be replaced later
+
+by_season$season<-gsub(pattern="1|2|3", replacement = "Winter",x=by_season$season)
+
+by_season$season<-gsub(pattern="4|5|6", replacement = "Spring",x=by_season$season)
+
+by_season$season<-gsub(pattern="7|8|9", replacement = "Summer",x=by_season$season)
+
+by_season_count<-by_season%>%
+    group_by(season)%>%
+    summarize(n=n())
+
+ggplot(by_season_count,aes(x=factor(season,level=c("Winter","Spring","Summer","Fall")),y=n))+
+    geom_col()+
+    labs(title="barplot of number gun deaths by season",y="number of gun deaths",x="season")
+
+print("Summer has the most gun deaths")
 ```
 
 
@@ -78,42 +157,108 @@ Assume that:
 ### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
 
 ```{r race}
+by_intent_race<-gun_deaths%>%
+    group_by(intent,race)%>%
+    summarize(n=n())
 
+ggplot(by_intent_race,aes(x=race,y=n,fill=intent))+
+    geom_col(position="dodge")+
+    theme(axis.text.x = element_text(vjust=0.5))+
+    labs(title="barplot of gun deaths by race and intent",y="number of gun deaths")+
+    scale_x_discrete(labels=wrap_format(20))#to wrap long tick labels into multiple lines
 ```
 
 (hint maybe looking at percentages would be good)
 ```{r race_2}
+by_intent_race_percent<-gun_deaths%>% #to create percentages
+    count(race,intent)%>%
+    group_by(race)%>%
+    mutate(percent = n/sum(n)*100)%>%
+    ungroup()
 
+ggplot(by_intent_race_percent,aes(x=race,y=percent,fill=intent))+
+    geom_col(position="dodge")+
+    theme(axis.text.x = element_text(vjust=0.5))+
+    labs(title="barplot of percentages of gun deaths by intent for different races",y="percentage of total gun deaths")+
+    scale_x_discrete(labels=wrap_format(20))
+
+print("Whites who are killed by guns more likely to die because of suicide whereas blacks and hispanics who are killed by guns more likely to die because of homicide.")
 ```
 
 
 ### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
 
 ```{r police}
+by_age<-gun_deaths%>%
+    arrange(desc(age))%>%
+    slice(19:n())
 
+by_age$age<-as.numeric(by_age$age)
+
+by_age$police<-gsub(pattern="0",replacement="No police involvement",x=by_age$police)
+
+by_age$police<-gsub(pattern="1",replacement="Police involvement",x=by_age$police)
+
+ggplot(by_age,aes(x=police,y=age))+
+    geom_boxplot()+
+    labs(title="boxplot of age of gun deaths by police-involvement",x=NULL)
+
+by_race_percent<-gun_deaths%>%
+    count(race,police)%>%
+    group_by(race)%>%
+    mutate(percent = n/sum(n)*100)%>%
+    ungroup()%>%
+    filter(police==1)
+
+by_race_percent$police<-gsub(pattern="0",replacement="No police involvement",x=by_race_percent$police)
+
+by_race_percent$police<-gsub(pattern="1",replacement="Police involvement",x=by_race_percent$police)
+
+ggplot(by_race_percent,aes(x=race,y=percent,fill=police))+
+    geom_col(position="dodge")+
+    scale_x_discrete(labels=wrap_format(20))+
+    theme(legend.position="none")+
+    labs(y="percentage of gun deaths with police involvement",title="barplot of percentage of gun deaths with police involvement by race")
 ```
 
 Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
 
 ```{r stats?}
-
+t.test(by_age$age~by_age$police,mu=0,alt="two.sided",conf=0.95,var.eq=F,paired=F)
 
 ```
 
 
 ```{r police_2}
-
+#not sure what this chunk is for
 ```
 
 ```{r stats_2?}
+#proportion test to assess police involvement and api vs not api. not sure I did this right, so I didn't do it for the other races.
+by_api<-gun_deaths
 
+#simplify race data to api and not api
+by_api$race<-gsub(pattern="Black",replacement="Not API",x=by_api$race)
+by_api$race<-gsub(pattern="Hispanic",replacement="Not API",x=by_api$race)
+by_api$race<-gsub(pattern="Not Availabletive American/Not Availabletive Alaskan",replacement="Not API",x=by_api$race)
+by_api$race<-gsub(pattern="White",replacement="Not API",x=by_api$race)
 
+by_api<-by_api%>%
+    group_by(race,police)%>%
+    summarize(n=n())
+
+#set up matrix for by_api as input for proportion test
+api <- matrix(c(by_api$n[1],by_api$n[2],by_api$n[3],by_api$n[4]), ncol=2)
+colnames(api) <- c('api','not api')
+rownames(api) <- c('no police involvement','police involvement')
+
+prop.test(api)
 ```
 
 
 Finally, all together now:
 ```{r police_3}
-
+#I'm a noob at stats and don't know how to do this.
 ```
 
 
