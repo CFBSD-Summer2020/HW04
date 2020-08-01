@@ -7,10 +7,6 @@ output: github_document
 
 ```{r load-data, message=FALSE, warning=FALSE}
 
-# Install packages
-
-install.packages("ggsignif")
-
 # Load the packages
 
 library(tidyverse) 
@@ -19,7 +15,6 @@ library(knitr)
 library(ggplot2)
 library(data.table)
 library(RColorBrewer)
-library(ggsignif)
 
 # Read in the data - fread() requires loading data.table package
 
@@ -369,7 +364,7 @@ race_intent_perc_plot
 
 ### _Among White, Black and Hispanic people killed by gun in 2012-2014 due to homicide, Black people comprised the highest percentage of victims (> 55%). Although White people comprised the second highest fraction of those victims, they were more likely to die due to suicide - they comprised around 90% of cases of suicide among these three races. Hispanics comprised around 17% of victims of homicide and around 5% of suicide cases._
 
-### 9a. Assess the relationship between police involvement and age
+### 9. Assess the relationship between police involvement and age
 
 ```{r police involvement by age}
 
@@ -580,7 +575,7 @@ age_police_perc_plot5
 
 ### _Police was involved in less than 1.5% of total cases of death by guns. The absolute number of cases was the highest for people of age 21 to 30 independently from police involvement. Among the cases, in which police was involved, the highest percentage of victims were people of age 21 to 30. The second highest fraction were people of ages 31-40. Among the deaths, in which police was involved, the victims older than 60 comprised around than 5%, whereas among the cases, in which police was not involved, they comprised around 20%. Police was generally more involved in the cases of gun deaths among younger part of the population._
 
-## Police involvement and race. 
+## 10. Assess the relationship between police involvement and race. 
 
 ```{r police involvement by race}
 
@@ -592,22 +587,35 @@ police_race <- gun_deaths %>%
 by_race <- data.frame(table(police_race))
 colnames(by_race) <- c("Race", "Police", "Number")
 
-# Correct the name of "Native American/Native Alaskan"
+# Correct the name of "Native American/Native Alaskan" in the data frame
 
 by_race <- by_race %>%
     mutate(Race = recode(Race, 
                            "Not Availabletive American/Not Availabletive Alaskan" = "Native American/\nNative Alaskan",
                          "Asian/Pacific Islander" = "Asian/\nPacific Islander"))
 
+# Summarize the data on police involvement in death of victims of different races
+
+by_race <- by_race %>%
+    select(Police, Number, Race) %>%
+    group_by(Race, Police) %>%
+    summarize(Number = sum(Number))
+
+# Calculate the percentages 
+
+by_race$Police <- factor(by_race$Police, c("0", "1"), c("Not involved", "Involved"))
+
 race_police_perc1 <- by_race 
  
 race_police_perc1 <- race_police_perc1 %>%
-    mutate(Percentage = Number/sum(race_police_perc1$Number))
+    arrange(Police) %>%
+    mutate(Percentage = round(100*(Number/sum(race_police_perc1$Number)), digits = 3))
 
-race_police_perc
+kable(race_police_perc1, col.names = c("Race", "Police involvement", "Number of cases", "Percent of cases"), align = "lccc", format = "markdown")
 
+# Generate the plot 
 
-race_police_perc_plot <- ggplot(race_police_perc, aes(x = Race, y = Percentage, fill = Police)) +
+race_police_perc_plot <- ggplot(race_police_perc1, aes(x = Race, y = Percentage, fill = Police)) +
     geom_bar(position = "fill", stat="identity", color = "black") +
     scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1.00), labels = scales::percent) +
 
@@ -623,15 +631,48 @@ race_police_perc_plot <- ggplot(race_police_perc, aes(x = Race, y = Percentage, 
 
 race_police_perc_plot
 
+# Assess the difference between cases in which police was and was not involved in terms of the race of the victims
+
+race_police_perc2 <- by_race %>%
+    filter(Police == "Not involved")
+
+race_police_perc2 <- race_police_perc2 %>%
+    mutate(Percentage = Number/sum(race_police_perc2$Number))
+
+race_police_perc3 <- by_race %>%
+    filter(Police == "Involved")
+
+race_police_perc3 <- race_police_perc3 %>%
+    mutate(Percentage = Number/sum(race_police_perc3$Number))
+
+race_police_perc4 <- rbind(race_police_perc2, race_police_perc3)
+
+race_police_perc_plot2 <- ggplot(race_police_perc4, aes(x = Police, y = Percentage, fill = Race)) +
+   
+    geom_bar(position = "fill", stat="identity", color = "black") +
+   
+    scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00), labels = scales::percent) +
+    
+    labs(title = "Percentage of cases in which police was and was not involved \nby race of the victim", x = "Police involvment", y = "Percent of all deaths") +
+
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) 
+
+race_police_perc_plot2
+
 ```
+### White people comprise the highest percentage of cases, in which police was and was not involved (which is expected due to their higher representation in the general population). The percentage of cases involving Black and Hispanic people, in which police was involved, was higher than in cases where police was not involved, with the difference being particularly bigger for Hispanics. 
 
-### 
-
-## Police involvement by age and race. 
+## 11. Assess the relationship between police involvement by age and race. 
 
 ```{r police involvement by age and race}
 
-#POLICE INVOLVED
+#Police involved
 
 police_race_age <- gun_deaths %>%
     select(age, race, police)
@@ -692,24 +733,20 @@ decade11 <- by_race_age_df %>%
 
 by_decade_age_race <- rbind(decade1, decade2, decade3, decade4, decade5, decade6, decade7, decade8, decade9, decade10, decade11)
 
-
-by_decade_age_race <- by_decade_age_race %>%
+by_decade_age_race2 <- by_decade_age_race %>%
     select(Police, Number, Decade, Race) %>%
     filter(Police == 1) %>%
     group_by(Decade, Race, Police) %>%
     summarize(Number = sum(Number))
 
-
-by_decade_age_race
-
-
-by_decade_age_race$Decade <- factor(by_decade_age_race$Decade,levels = c("0-10", "11-20",  "21-30", "31-40", "41-50", "51-60", "61-70",  "71-80", "81-90", "91-100", "101-110"))
+by_decade_age_race2$Decade <- factor(by_decade_age_race2$Decade,levels = c("0-10", "11-20",  "21-30", "31-40", "41-50", "51-60", "61-70",  "71-80", "81-90", "91-100", "101-110"))
 
 
-bar_plot_police_age_race <- ggplot(data = by_decade_age_race, aes(x = Decade, y = Number, width = 0.9, fill = Race)) +
-  geom_bar(stat = "identity", color = "black", position = "dodge2") +
+bar_plot_police_age_race2 <- ggplot(data = by_decade_age_race2, aes(x = Decade, y = Number, width = 0.9, fill = Race)) +
+  
+    geom_bar(stat = "identity", color = "black", position = "dodge2") +
     
-        labs(title = "Police involved", x = "Age", y = "Number of deaths") +
+    labs(title = "Number of cases in which police was involved \nby age and race of the victim", x = "Age", y = "Number of deaths") +
 
     theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
         legend.title = element_text(colour="black", size = 12, face = "bold"),
@@ -721,21 +758,40 @@ bar_plot_police_age_race <- ggplot(data = by_decade_age_race, aes(x = Decade, y 
     
     scale_y_continuous(breaks = c(0, 20, 40, 60, 80, 100, 120, 140, 160, 180, 200), limits = c(0,200)) 
 
+bar_plot_police_age_race2
 
-bar_plot_police_age_race
+#Percentage-wise - police involved
 
+by_decade_race3 <- by_decade_age_race %>%
+    select(Decade, Race, Police, Number) %>%
+    filter(Police == 1) %>%
+    group_by(Decade, Race, Police) %>%
+    summarize(Number = sum(Number))
 
-#Percent involved
+by_decade_race3 <- by_decade_race3 %>%
+    mutate(Percentage = Number/sum(by_decade_race3$Number))
 
+by_decade_race3$Decade <- factor(by_decade_race3$Decade,levels = c("0-10", "11-20",  "21-30", "31-40", "41-50", "51-60", "61-70",  "71-80", "81-90", "91-100", "101-110"))
 
+by_decade_race3_perc_plot <- ggplot(by_decade_race3, aes(x = Decade, y = Percentage, fill = Race)) +
+   
+    geom_bar(position = "fill", stat="identity", color = "black") +
+   
+    scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00), labels = scales::percent) +
+    
+    labs(title = "Percentage of cases in which police was involved \nby age and race of the victim", x = "Age", y = "Percent of deaths") +
 
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 9, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) 
 
+by_decade_race3_perc_plot
 
-
-
-
-#POLICE NOT INVOLVED
-
+#Police not involved
 
 police_race_age <- gun_deaths %>%
     select(age, race, police)
@@ -803,17 +859,14 @@ by_decade_age_race <- by_decade_age_race %>%
     group_by(Decade, Race, Police) %>%
     summarize(Number = sum(Number))
 
-
-by_decade_age_race
-
-
 by_decade_age_race$Decade <- factor(by_decade_age_race$Decade,levels = c("0-10", "11-20",  "21-30", "31-40", "41-50", "51-60", "61-70",  "71-80", "81-90", "91-100", "101-110"))
 
 
 bar_plot_police_age_race <- ggplot(data = by_decade_age_race, aes(x = Decade, y = Number, width = 0.9, fill = Race)) +
-  geom_bar(stat = "identity", color = "black", position = "dodge2") +
+  
+    geom_bar(stat = "identity", color = "black", position = "dodge2") +
     
-        labs(title = "Police not involved", x = "Age", y = "Number of deaths") +
+    labs(title = "Number of cases in which police was not involved \nby age and race of the victim", x = "Age", y = "Number of deaths") +
 
     theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
         legend.title = element_text(colour="black", size = 12, face = "bold"),
@@ -825,25 +878,39 @@ bar_plot_police_age_race <- ggplot(data = by_decade_age_race, aes(x = Decade, y 
     
     scale_y_continuous(breaks = c(0, 2000, 4000, 6000, 8000, 10000, 12000, 14000), limits = c(0,14000)) 
 
-
 bar_plot_police_age_race
 
+#Percentage-wise - police not involved
 
-#Percent - not involved
+by_decade_race4 <- by_decade_age_race %>%
+    select(Decade, Race, Police, Number) %>%
+    filter(Police == 0)
 
+by_decade_race4 <- by_decade_race4 %>%
+    mutate(Percentage = Number/sum(by_decade_race4$Number))
 
+by_decade_race4_perc_plot <- ggplot(by_decade_race4, aes(x = Decade, y = Percentage, fill = Race)) +
+   
+    geom_bar(position = "fill", stat="identity", color = "black") +
+   
+    scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00), labels = scales::percent) +
+    
+    labs(title = "Percentage of cases in which police was not involved \nby age and race of the victim", x = "Age", y = "Percent of deaths") +
 
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 9, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) 
 
-
-
-
-
-
-
+by_decade_race4_perc_plot
 
 ```
 
-### _._
+### _Percentage of cases involving Black people, in which police was involved, was decreasing with the age of victims. Similar trend was observed for the cases involving Hispanics (with the exception of cases involving victims above the age of 60). Conversely, the percentage of cases involving White people generally increased with age._ 
+### _Among the cases, in which police was not involved, the trends are similar, with one of the exceptions being the percentage of White victims decreasing with age between the first and second decade of life._
 
 ## Session info
 
