@@ -7,6 +7,10 @@ output: github_document
 
 ```{r load-data, message=FALSE, warning=FALSE}
 
+# Install packages
+
+install.packages("ggsignif")
+
 # Load the packages
 
 library(tidyverse) 
@@ -15,6 +19,7 @@ library(knitr)
 library(ggplot2)
 library(data.table)
 library(RColorBrewer)
+library(ggsignif)
 
 # Read in the data - fread() requires loading data.table package
 
@@ -149,10 +154,12 @@ by_sex_age$sex <- factor(by_sex_age$sex, c("F", "M"), c("Female", "Male"))
 # Generate a boxplot
 
 ggplot(by_sex_age, aes(x = sex, y = age, fill = sex)) +
+  
     geom_boxplot(outlier.shape = NA) +
     
     scale_fill_manual(values=c("#E69F00", "#56B4E9")) +
-    labs(title = "Age of gun death victims (for years 2012-14)", x = "Sex", y = "Age") +
+  
+    labs(title = "Age of gun death victims by sex (for years 2012-14)", x = "Sex", y = "Age") +
 
     theme(plot.title = element_text(size = 14, family = "Tahoma", face = "bold", hjust = 0.5),
           legend.position = "none",
@@ -172,8 +179,9 @@ average_age_F <- by_sex_age %>%
     filter(sex == "Female") %>%
     summarize(women_average_age = mean(age))
 
-average_age_F
+average_age_F <- round(average_age_F,digits=2)
 
+kable(average_age_F, col.names = c("Average age of female victims"), align = "lc", format = "markdown")
 
 ```
 
@@ -181,37 +189,37 @@ average_age_F
 
 ```{r deaths by education}
 
+# Create a data frame with data on the education of white males killed by guns in 2012 - include only high school and higher levels of education
+
 white_M_high_school <- gun_deaths %>%
     select(year, sex, race, education) %>%
     filter(year == "2012", sex == "M", race == "White", education == c("BA+", "HS/GED", "Some college"))
 
+# Determine the number of deaths
+
 Number_of_M_HS_victims <- nrow(white_M_high_school)
 
-Number_of_M_HS_victims
-
+kable(Number_of_M_HS_victims, col.names = c("Number of white male victims with at least a high school education killed by guns in 2012"), align = "lc", format = "markdown")
 
 ```
-### _5063 white males with at least a high school education were killed in 2012._
+### _5063 white males with at least high school education were killed in 2012._
 
-## Which season of the year has the most gun deaths?
-
-Assume that:
-
-* Winter = January-March
-* Spring = April-June
-* Summer = July-September
-* Fall = October-December
+## 7. Determine which season of the year has the most gun deaths
 
 ```{r deaths by season}
+
+# Create a summary of the number of deaths per month; use the abbreviations of the names of the months
 
 deaths_months <- gun_deaths %>%
     select(month)
 
 deaths_months$month <- factor(deaths_months$month, c(1:12), labels = month.abb)
 
-table(deaths_months)
+# Print the table with data on number of deaths per month
 
-deaths_months
+kable(table(deaths_months), col.names = c("Month", "Number of deaths"), align = "lc", format = "markdown")
+
+# Assign months to seasons
 
 deaths_by_season <- deaths_months %>%
     mutate(season = month) %>%
@@ -230,15 +238,22 @@ deaths_by_season <- deaths_months %>%
                            Dec = "Fall")) %>%
     select(season)
     
+# Create a data frame with a summary about the number of deaths per season; rename the columns
 
 deaths_by_season_df <- data.frame(table(deaths_by_season))
-deaths_by_season_df
-
 colnames(deaths_by_season_df) <- c("Season", "Number")
 
+# Print the table with data on number of deaths per season
+
+kable(deaths_by_season_df, col.names = c("Season", "Number of deaths"), align = "lc", format = "markdown")
+
+# Generate a bar plot
+
 bar_plot_season <- ggplot(data = deaths_by_season_df, aes(x = Season, y = Number, width = 0.75, fill = Season)) +
-  geom_bar(stat = "identity", color = "black", fill = brewer.pal(length(unique(deaths_by_season_df$Season)), "Set3")) +
-  geom_text(aes(label = Number), position=position_dodge(width=1.5), vjust=-0.8) +
+  
+    geom_bar(stat = "identity", color = "black", fill = brewer.pal(length(unique(deaths_by_season_df$Season)), "Set3")) +
+  
+    geom_text(aes(label = Number), position=position_dodge(width=1.5), vjust=-0.8) +
     
     labs(title = "Number of gun deaths in US by season (for years 2012-14)", x = "Season", y = "Number of deaths") +
 
@@ -254,30 +269,35 @@ bar_plot_season <- ggplot(data = deaths_by_season_df, aes(x = Season, y = Number
 
 bar_plot_season
 
-
-
 ```
+
 ### _Summer had the highest number of gun deaths across the years 2012-14._
 
-# These are more open ended questions from here on out, you could look at making multiple summaries or types of plots. 
-
-### Are whites who are killed by guns more likely to die because of suicide or homicide? How does this compare to blacks and hispanics?
+## 8a. Determine whether Whites who are killed by guns are more likely to die because of suicide or homicide
+##     Compare the result to Blacks and Hispanics
 
 ```{r deaths by race}
+
+# Create a data frame with data on deaths by race and intent including only suicide and homicide
 
 race_intent <- gun_deaths %>%
     select(race, intent) %>%
     filter(race == c("White", "Black", "Hispanic"), intent == c("Suicide", "Homicide"))
 
+# Generate a data frame summarizing deaths by race and intent including suicide and homicide; rename the columns
+
 race_intent_df <- data.frame(table(race_intent))
 
-
 colnames(race_intent_df) <- c("Race", "Intent", "Number")
-race_intent_df
+
+# Generate a bar plot
 
 bar_plot_race_intent <- ggplot(data = race_intent_df, aes(x = Intent, y = Number, width = 0.9, fill = Race)) +
-  geom_bar(stat = "identity", color = "black", position = "dodge2") +
-    
+  
+    geom_bar(stat = "identity", color = "black", position = "dodge2") +
+  
+    geom_text(aes(label = Number), position=position_dodge(width=0.9), vjust=-0.6, hjust = 0.5) +
+
     labs(title = "Number of males killed by guns because of suicide and homicide \nin US between 2012 and 2014 by race", x = "Intent", y = "Number of deaths") +
 
     theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
@@ -290,26 +310,52 @@ bar_plot_race_intent <- ggplot(data = race_intent_df, aes(x = Intent, y = Number
     
     scale_y_continuous(breaks = c(0, 2000, 4000, 6000, 8000, 10000), limits = c(0, 10000)) 
 
-
 bar_plot_race_intent
-
 
 ```
 
+### _White people killed by guns were more likely to die due to suicide than homicide._
+### _Black and Hispanic people killed by guns, however, died more often as a result of homicide than suicide._
 
-(hint maybe looking at percentages would be good)
+## 8b. Determine what percentage of people killed by guns due to homicide and suicide correponds to Black, Hispanic, and White people. 
+
 ```{r deaths by race - percent}
 
-race_intent_perc <- race_intent_df %>%
-    mutate(Percentage = Number/sum(Number))
+# Calculate percentage of victims of different races killed due to homicide
 
-race_intent_perc_plot <- ggplot(race_intent_perc, aes(x = Intent, y = Percentage, fill = Race)) +
-  geom_bar(position = "fill", stat="identity", color = "black") +
-  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1.00), labels = scales::percent) +
+race_intent_perc1 <- race_intent_df 
 
- labs(title = "Percentage of males killed by guns because of suicide and homicide \nin US between 2012 and 2014 by race", x = "Intent", y = "Number of deaths") +
+race_intent_perc1 <- race_intent_perc1 %>%
+    filter(Intent == "Homicide") 
 
-    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+race_intent_perc1 <- race_intent_perc1 %>%
+    mutate(Percentage = Number/sum(race_intent_perc1$Number))
+
+# Calculate percentage of victims of different races killed due to suicide
+
+race_intent_perc2 <- race_intent_df 
+
+race_intent_perc2 <- race_intent_perc2 %>%
+    filter(Intent == "Suicide")
+
+race_intent_perc2 <- race_intent_perc2 %>%
+    mutate(Percentage = Number/sum(race_intent_perc2$Number))
+
+# Combine the data frames with calculated percentages
+
+race_intent_perc3 <- rbind(race_intent_perc1, race_intent_perc2)   
+
+# Generate bar plot
+
+race_intent_perc_plot <- ggplot(race_intent_perc3, aes(x = Intent, y = Percentage, fill = Race)) +
+ 
+   geom_bar(position = "fill", stat="identity", color = "black") +
+  
+   scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00), labels = scales::percent) +
+
+   labs(title = "Percentage of males killed by guns because of suicide and homicide \nin US between 2012 and 2014 by race", x = "Intent", y = "Number of deaths") +
+
+   theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
         legend.title = element_text(colour="black", size = 12, face = "bold"),
         axis.title.x = element_text(colour="black", size = 12, face = "bold"),
         axis.title.y = element_text(colour="black", size = 12, face = "bold"),
@@ -320,15 +366,14 @@ race_intent_perc_plot <- ggplot(race_intent_perc, aes(x = Intent, y = Percentage
 race_intent_perc_plot
 
 ```
-ggplot(race_intent_df, aes(x = Intent, y =  fill = Number)) +
-  geom_bar(color = "black") +
-  scale_y_continuous(labels = scales::percent)
-### _Summer had the highest number of gun deaths across the years 2012-14._
 
+### _Among White, Black and Hispanic people killed by gun in 2012-2014 due to homicide, Black people comprised the highest percentage of victims (> 55%). Although White people comprised the second highest fraction of those victims, they were more likely to die due to suicide - they comprised around 90% of cases of suicide among these three races. Hispanics comprised around 17% of victims of homicide and around 5% of suicide cases._
 
-### Are police-involved gun deaths significantly different from other gun deaths? Assess the relationship between police involvement and age, police involvement and race, and the intersection of all three variables.
+### 9a. Assess the relationship between police involvement and age
 
 ```{r police involvement by age}
+
+# Create a data frame and a summary with data on age of victims and police involvement
 
 police_age <- gun_deaths %>%
     select(age, police)
@@ -337,7 +382,11 @@ police_age_df <- data.frame(table(police_age))
 
 colnames(police_age_df) <- c("Age", "Police", "Number")
 
+# Convert the values of age from factor to double
+
 police_age_df$Age <- as.numeric(as.character(police_age_df$Age))
+
+# Assign ranges of age to decades 
 
 decade1 <- police_age_df %>%
     filter(Age %in% c(0: 10)) %>%
@@ -385,22 +434,23 @@ decade11 <- police_age_df %>%
 
 by_decade <- rbind(decade1, decade2, decade3, decade4, decade5, decade6, decade7, decade8, decade9, decade10, decade11)
 
+# Summarize the data on police involvement in death of victims of different ages
 
 by_decade <- by_decade %>%
     select(Police, Number, Decade) %>%
     group_by(Decade, Police) %>%
     summarize(Number = sum(Number))
 
-by_decade
-    
-
 by_decade$Decade <- factor(by_decade$Decade,levels = c("0-10", "11-20",  "21-30", "31-40", "41-50", "51-60", "61-70",  "71-80", "81-90", "91-100", "101-110"))
 
+# Plot number of deaths by age and police involvement
 
-bar_plot_police_age <- ggplot(data = by_decade, aes(x = Decade, y = Number, width = 0.9, fill = Police)) +
+by_decade$Police <- factor(by_decade$Police, c("0", "1"), c("Not involved", "Involved"))
+
+bar_plot_police_age1 <- ggplot(data = by_decade, aes(x = Decade, y = Number, width = 0.9, fill = Police)) +
   geom_bar(stat = "identity", color = "black", position = "dodge2") +
     
-        labs(title = "", x = "Age", y = "Number of deaths") +
+        labs(title = "Number of deaths by age and police involvement", x = "Age", y = "Number of deaths") +
 
     theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
         legend.title = element_text(colour="black", size = 12, face = "bold"),
@@ -410,24 +460,77 @@ bar_plot_police_age <- ggplot(data = by_decade, aes(x = Decade, y = Number, widt
         axis.text.y = element_text(colour="black", size = 10),
         panel.grid.major.x = element_blank()) +
     
-    scale_y_continuous(breaks = c(0, 5000, 10000, 15000, 20000, 23000), limits = c(0,23000)) 
+    scale_y_continuous(breaks = c(0, 4000, 8000, 12000, 16000, 20000, 24000), limits = c(0,24000)) 
 
+bar_plot_police_age1
 
-bar_plot_police_age
+# Plot number of cases, in which police was not involved, by age
 
+by_decade2 <- by_decade %>%
+    filter(Police == "Not involved")
 
+bar_plot_police_age2 <- ggplot(data = by_decade2, aes(x = Decade, y = Number, width = 0.6)) +
+    geom_bar(stat = "identity", color = "black", position = "dodge2", fill = "indianred1") +
+   
+    labs(title = "Number of cases without police involvement by age", x = "Age", y = "Number of deaths") +
 
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) +
+    
+    scale_y_continuous(breaks = c(0, 4000, 8000, 12000, 16000, 20000, 24000), limits = c(0,24000)) 
 
-age_police_perc <- by_decade %>%
-    mutate(Percentage = Number/sum(Number))
+bar_plot_police_age2
 
-age_police_perc
+# Plot number of cases, in which police was involved, by age
 
-age_police_perc_plot <- ggplot(age_police_perc, aes(x = Decade, y = Percentage, fill = Police)) +
+by_decade3 <- by_decade %>%
+    filter(Police == "Involved")
+
+bar_plot_police_age3 <- ggplot(data = by_decade3, aes(x = Decade, y = Number, width = 0.6)) +
+    geom_bar(stat = "identity", color = "black", position = "dodge2", fill = "turquoise3") +
+     
+    labs(title = "Number of cases with police involvement by age", x = "Age", y = "Number of deaths") +
+
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) +
+    
+    scale_y_continuous(breaks = c(0, 100, 200, 300, 400, 500, 600), limits = c(0,600)) 
+
+bar_plot_police_age3
+
+# Calculate the percentage of cases in which police was or was not involved by age
+
+age_police_perc_all <- by_decade
+  
+age_police_perc_all <- age_police_perc_all %>%
+    mutate(Percentage = Number/sum(age_police_perc_all$Number))
+
+# Calculate the percentage of total cases, in which police was involved
+
+police_involved <- age_police_perc_all %>%
+  filter(Police == "Involved")
+
+police_involved_perc <- sum(police_involved$Percentage)
+
+kable(round(police_involved_perc, digits = 3), col.names = c("Fraction of cases, in which police was involved"), align = "l", format = "markdown")
+
+# Plot the percentage of cases in which police was or was not involved by age
+
+age_police_perc_plot4 <- ggplot(age_police_perc_all, aes(x = Decade, y = Percentage, fill = Police)) +
   geom_bar(position = "fill", stat="identity", color = "black") +
-  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1.00), labels = scales::percent) +
+  scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00), labels = scales::percent) +
 
- labs(title = " race", x = "Age [yo]", y = "Number of deaths") +
+ labs(title = "Percentage of cases in which police was and was not involved \nby age of the victim", x = "Age", y = "Percent of all deaths") +
 
     theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
         legend.title = element_text(colour="black", size = 12, face = "bold"),
@@ -437,19 +540,51 @@ age_police_perc_plot <- ggplot(age_police_perc, aes(x = Decade, y = Percentage, 
         axis.text.y = element_text(colour="black", size = 10),
         panel.grid.major.x = element_blank()) 
 
-age_police_perc_plot
+age_police_perc_plot4
+
+# Assess the difference between cases in which police was and was not involved in terms of age of the victims
+
+age_police_perc5 <- by_decade %>%
+    filter(Police == "Not involved")
+
+age_police_perc5 <- age_police_perc5 %>%
+    mutate(Percentage = Number/sum(age_police_perc5$Number))
+
+age_police_perc6 <- by_decade %>%
+    filter(Police == "Involved")
+
+age_police_perc6 <- age_police_perc6 %>%
+    mutate(Percentage = Number/sum(age_police_perc6$Number))
+
+age_police_perc7 <- rbind(age_police_perc5, age_police_perc6)
+
+age_police_perc_plot5 <- ggplot(age_police_perc7, aes(x = Police, y = Percentage, fill = Decade)) +
+   
+    geom_bar(position = "fill", stat="identity", color = "black") +
+   
+    scale_y_continuous(breaks = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.00), labels = scales::percent) +
+    
+    labs(title = "Percentage of cases in which police was and was not involved \nby age of the victim", x = "Police involvment", y = "Percent of all deaths") +
+
+    theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
+        legend.title = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.x = element_text(colour="black", size = 12, face = "bold"),
+        axis.title.y = element_text(colour="black", size = 12, face = "bold"),
+        axis.text.x = element_text(colour="black", size = 10, face = "bold"),
+        axis.text.y = element_text(colour="black", size = 10),
+        panel.grid.major.x = element_blank()) 
+
+age_police_perc_plot5
 
 ```
 
-Think about performing stats such as a t.test to see if differences you are plotting are statistically significant
+### _Police was involved in less than 1.5% of total cases of death by guns. The absolute number of cases was the highest for people of age 21 to 30 independently from police involvement. Among the cases, in which police was involved, the highest percentage of victims were people of age 21 to 30. The second highest fraction were people of ages 31-40. Among the deaths, in which police was involved, the victims older than 60 comprised around than 5%, whereas among the cases, in which police was not involved, they comprised around 20%. Police was generally more involved in the cases of gun deaths among younger part of the population._
 
-```{r stats?}
+## Police involvement and race. 
 
-
-```
-``` 
-```
 ```{r police involvement by race}
+
+# Create a data frame with summary of police involvement in gun deaths of victims of different races
 
 police_race <- gun_deaths %>%
     select(race, police)
@@ -457,25 +592,26 @@ police_race <- gun_deaths %>%
 by_race <- data.frame(table(police_race))
 colnames(by_race) <- c("Race", "Police", "Number")
 
+# Correct the name of "Native American/Native Alaskan"
 
 by_race <- by_race %>%
     mutate(Race = recode(Race, 
                            "Not Availabletive American/Not Availabletive Alaskan" = "Native American/\nNative Alaskan",
                          "Asian/Pacific Islander" = "Asian/\nPacific Islander"))
-    
-by_race
 
-race_police_perc <- by_race %>%
-    mutate(Percentage = Number/sum(Number))
+race_police_perc1 <- by_race 
+ 
+race_police_perc1 <- race_police_perc1 %>%
+    mutate(Percentage = Number/sum(race_police_perc1$Number))
 
 race_police_perc
 
 
 race_police_perc_plot <- ggplot(race_police_perc, aes(x = Race, y = Percentage, fill = Police)) +
-  geom_bar(position = "fill", stat="identity", color = "black") +
-  scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1.00), labels = scales::percent) +
+    geom_bar(position = "fill", stat="identity", color = "black") +
+    scale_y_continuous(breaks = c(0, 0.25, 0.5, 0.75, 1.00), labels = scales::percent) +
 
- labs(title = " race", x = "Intent", y = "Number of deaths") +
+    labs(title = " race", x = "Intent", y = "Number of deaths") +
 
     theme(plot.title = element_text(size = 13, family = "Tahoma", face = "bold", hjust = 0.5),
         legend.title = element_text(colour="black", size = 12, face = "bold"),
@@ -488,16 +624,11 @@ race_police_perc_plot <- ggplot(race_police_perc, aes(x = Race, y = Percentage, 
 race_police_perc_plot
 
 ```
-``` 
 
-```
-```{r stats_2?}
+### 
 
+## Police involvement by age and race. 
 
-```
-
-
-Finally, all together now:
 ```{r police involvement by age and race}
 
 #POLICE INVOLVED
@@ -712,7 +843,7 @@ bar_plot_police_age_race
 
 ```
 
-### _Summer had the highest number of gun deaths across the years 2012-14._
+### _._
 
 ## Session info
 
